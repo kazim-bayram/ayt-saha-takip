@@ -1,0 +1,88 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is admin (with existence check)
+    function isAdmin() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Helper function to check if user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Users collection rules
+    match /users/{userId} {
+      // Allow public read for username availability checking during registration
+      // This is safe because user profiles only contain non-sensitive display info
+      allow read: if true;
+      
+      // Users can create ONLY their own profile (on registration)
+      // This is the key rule for signup - must be explicit
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Admins can create profiles for other users
+      allow create: if isAdmin();
+      
+      // Users can update their own profile (except role and isActive)
+      allow update: if isOwner(userId) && 
+                       (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isActive']));
+      
+      // Only admins can change roles or update any user profile
+      allow update: if isAdmin();
+      
+      // Only admins can delete users
+      allow delete: if isAdmin();
+    }
+    
+    // System settings (note schema, etc.) - Admin write only
+    // Admin = users/{uid} document exists and has role == 'admin' (string)
+    match /system_settings/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+                   exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                   get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin';
+    }
+    
+    // Notes collection rules
+    match /notes/{noteId} {
+      // Workers can only read their own notes
+      // Admins can read all notes
+      allow read: if isAuthenticated() && 
+                     (resource.data.userId == request.auth.uid || isAdmin());
+      
+      // Workers can create notes (must include their own userId)
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid;
+      
+      // Workers can update their own notes (must keep same userId)
+      allow update: if isAuthenticated() && 
+                       resource.data.userId == request.auth.uid &&
+                       request.resource.data.userId == request.auth.uid;
+      
+      // Admins can update any note (for status changes, comments, etc.)
+      allow update: if isAdmin();
+      
+      // Any authenticated user can add comments to any note
+      // This allows workers to respond to admin feedback on their notes
+      allow update: if isAuthenticated() && 
+                       request.resource.data.userId == resource.data.userId &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comments', 'updatedAt']);
+      
+      // Workers can delete their own notes
+      // Admins can delete any note
+      allow delete: if isAuthenticated() && 
+                       (resource.data.userId == request.auth.uid || isAdmin());
+    }
+    
+  }
+}
