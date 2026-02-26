@@ -219,9 +219,9 @@ const Dashboard: React.FC = () => {
                 </svg>
               </div>
               <div className="hidden sm:block">
-                <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Saha Takip</h1>
+                <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>AYT Mühendislik</h1>
                 <p className={`text-xs ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>
-                  {isAdmin ? 'Yönetici Paneli' : 'Saha Notları'}
+                  {isAdmin ? 'Yönetici Paneli' : 'Saha Kayıtları'}
                 </p>
               </div>
             </div>
@@ -283,7 +283,7 @@ const Dashboard: React.FC = () => {
                   type="text"
                   value={filters.searchQuery}
                   onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
-                  placeholder="Proje adı veya içerikte ara..."
+                  placeholder="Proje / iş kaleminde ara..."
                   className={`w-full rounded-xl pl-12 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-safety-orange/20 focus:border-safety-orange transition-all ${
                     isDark 
                       ? 'bg-slate-800 border border-slate-600 text-white placeholder-concrete-500' 
@@ -350,7 +350,7 @@ const Dashboard: React.FC = () => {
                 {/* Hakediş / Seviye */}
                 <div>
                   <label className={`block text-xs font-medium mb-1.5 ${isDark ? 'text-concrete-400' : 'text-gray-600'}`}>
-                    Hakediş / Seviye
+                    İlerleme / Seviye
                   </label>
                   <div className="relative">
                     <Tag className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-concrete-500' : 'text-gray-400'}`} />
@@ -420,7 +420,7 @@ const Dashboard: React.FC = () => {
                 {isAdmin && (
                   <div>
                     <label className={`block text-xs font-medium mb-1.5 ${isDark ? 'text-concrete-400' : 'text-gray-600'}`}>
-                      Çalışan
+                      Saha Personeli
                     </label>
                     <div className="relative">
                       <User className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-concrete-500' : 'text-gray-400'}`} />
@@ -609,7 +609,7 @@ const Dashboard: React.FC = () => {
               <FileText className="w-5 h-5" />
               <span className="text-lg font-semibold">{visibleNotes.length}</span>
               <span className={isDark ? 'text-concrete-500' : 'text-gray-500'}>
-                {visibleNotes.length === 1 ? 'Not' : 'Not'}
+                {visibleNotes.length === 1 ? 'Kayıt' : 'Kayıt'}
               </span>
               {(hasActiveFilters || hasActiveSearch) && (
                 <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-safety-orange/20 text-safety-orange' : 'bg-orange-100 text-orange-700'}`}>
@@ -664,7 +664,7 @@ const Dashboard: React.FC = () => {
               <X className="w-8 h-8 text-red-400" />
             </div>
             <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              Notlar Yüklenirken Hata
+              Kayıtlar Yüklenirken Hata
             </h3>
             <p className={isDark ? 'text-concrete-400' : 'text-gray-500'}>{error}</p>
           </div>
@@ -676,12 +676,12 @@ const Dashboard: React.FC = () => {
               <FileText className={`w-10 h-10 ${isDark ? 'text-concrete-500' : 'text-gray-400'}`} />
             </div>
             <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {(hasActiveFilters || hasActiveSearch) ? 'Eşleşen not bulunamadı' : 'Henüz not yok'}
+              {(hasActiveFilters || hasActiveSearch) ? 'Eşleşen kayıt bulunamadı' : 'Henüz kayıt yok'}
             </h3>
             <p className={`mb-6 ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>
               {(hasActiveFilters || hasActiveSearch)
                 ? 'Aradığınızı bulmak için filtreleri değiştirmeyi deneyin.'
-                : 'İlk notunuzu ekleyerek saha sorunlarını belgelemeye başlayın.'}
+                : 'İlk saha kaydınızı oluşturarak proje ve iş kalemlerini takip etmeye başlayın.'}
             </p>
             {!(hasActiveFilters || hasActiveSearch) && (
               <button
@@ -689,7 +689,7 @@ const Dashboard: React.FC = () => {
                 className="inline-flex items-center gap-2 px-6 py-3 bg-safety-orange hover:bg-safety-orange-dark text-white font-semibold rounded-xl transition-colors"
               >
                 <Plus className="w-5 h-5" />
-                {isAdmin ? 'Yeni Not Ekle' : 'İlk Notunuzu Ekleyin'}
+                {isAdmin ? 'Yeni Kayıt Oluştur' : 'İlk Kaydınızı Oluşturun'}
               </button>
             )}
           </div>
@@ -719,7 +719,7 @@ const Dashboard: React.FC = () => {
         onClick={() => setShowAddModal(true)}
         disabled={uploading}
         className="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-safety-orange to-safety-orange-dark hover:from-safety-orange-dark hover:to-safety-orange text-white rounded-full shadow-industrial-lg flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 z-30"
-        title="Yeni Not Ekle"
+        title="Yeni Kayıt Oluştur"
       >
         {uploading ? (
           <LoadingSpinner size="sm" />

@@ -136,14 +136,14 @@ const TablePage: React.FC = () => {
   const handleExport = useCallback(() => {
     const getStatusLabel = (s: string) => NOTE_STATUS_CONFIG[normalizeStatus(s)]?.label || 'Eksik';
     const exportCols = tableDisplayFields.map((f) => f.label);
-    const allCols = ['Proje', ...exportCols, 'Durum', 'Tarih', 'İçerik', 'Yazan'];
+    const allCols = ['Proje', ...exportCols, 'Durum', 'Tarih', 'Açıklama', 'Kaydı Açan'];
     const data = displayNotes.map((note) => {
       const row: Record<string, string> = {
         'Proje': note.projectName || '',
         'Durum': getStatusLabel(note.status),
         'Tarih': formatWorkDate(getWorkDate(note)),
-        'İçerik': (note.content || '').length > 500 ? (note.content || '').slice(0, 500) + '...' : (note.content || ''),
-        'Yazan': note.userName || note.userEmail || ''
+        'Açıklama': (note.content || '').length > 500 ? (note.content || '').slice(0, 500) + '...' : (note.content || ''),
+        'Kaydı Açan': note.userName || note.userEmail || ''
       };
       tableDisplayFields.forEach((f) => {
         const v = getNoteFieldValue(note, f.id);
@@ -163,8 +163,8 @@ const TablePage: React.FC = () => {
     });
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Saha Raporu');
-    XLSX.writeFile(wb, 'Saha_Takip_Raporu.xlsx');
+    XLSX.utils.book_append_sheet(wb, ws, 'AYT Saha Raporu');
+    XLSX.writeFile(wb, 'AYT_Muhendislik_Saha_Raporu.xlsx');
   }, [displayNotes, tableDisplayFields]);
 
   const handleEditNote = (note: Note) => {
@@ -195,7 +195,7 @@ const TablePage: React.FC = () => {
   };
 
   if (loading) {
-    return <LoadingSpinner fullScreen message="Tablo yükleniyor..." />;
+    return <LoadingSpinner fullScreen message="Kayıt tablosu yükleniyor..." />;
   }
 
   return (
@@ -220,10 +220,10 @@ const TablePage: React.FC = () => {
                 <FileSpreadsheet className={`w-5 h-5 ${isDark ? 'text-safety-orange' : 'text-safety-orange-dark'}`} />
                 <div>
                   <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    Tablo Görünümü
+                    Kayıt Tablosu
                   </h1>
                   <p className={`text-xs ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>
-                    {displayNotes.length} not
+                    {displayNotes.length} kayıt
                     {filters.project || filters.adaParsel || filters.category || filters.progress || filters.status || filterDate ? ` (filtrelenmiş)` : ''}
                   </p>
                 </div>
@@ -238,10 +238,10 @@ const TablePage: React.FC = () => {
                       ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50'
                       : 'text-gray-600 hover:bg-gray-100'
                   }`}
-                  title="Form Şeması"
+                  title="Form Şablonu"
                 >
                   <Settings2 className="w-4 h-4" />
-                  Form Şeması
+                  Form Şablonu
                 </Link>
               )}
               <button
@@ -419,7 +419,7 @@ const TablePage: React.FC = () => {
               {displayNotes.length === 0 ? (
                 <tr>
                   <td colSpan={5 + tableDisplayFields.length + (tableDisplayFields.some((f) => f.id === 'date') ? 0 : 1)} className={`py-8 text-center whitespace-normal ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
-                    Henüz not bulunmuyor
+                    Henüz kayıt bulunmuyor
                   </td>
                 </tr>
               ) : (

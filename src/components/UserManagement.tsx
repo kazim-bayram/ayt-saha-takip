@@ -236,7 +236,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ isOpen, onClose }) => {
             </div>
             <div>
               <h2 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                Kullanıcı Yönetimi
+                Kullanıcı ve Yetki Yönetimi
               </h2>
               <p className={`text-sm ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>
                 {users.length} kullanıcı

@@ -39,7 +39,7 @@ const App: React.FC = () => {
 
   // Yükleniyor durumunu kontrol et
   if (loading) {
-    return <LoadingSpinner fullScreen message="Saha Takip yükleniyor..." />;
+    return <LoadingSpinner fullScreen message="AYT Mühendislik Takip Sistemi yükleniyor..." />;
   }
 
   // Giriş yapılmadıysa login ekranını göster
@@ -73,7 +73,7 @@ const App: React.FC = () => {
       {showPasswordChangeToast && (
         <div className="fixed bottom-4 right-4 z-[110] flex items-center gap-3 px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/30 shadow-lg animate-slide-up">
           <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
-          <p className="text-green-300 text-sm font-medium">Şifreniz güncellendi, hoş geldiniz.</p>
+          <p className="text-green-300 text-sm font-medium">Şifreniz güncellendi. Sisteme hoş geldiniz.</p>
         </div>
       )}
     </>

@@ -111,7 +111,7 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
               }`}
             >
               <UserCog className="w-4 h-4" />
-              <span>Kullanıcı Yönetimi</span>
+              <span>Kullanıcı ve Yetki Yönetimi</span>
             </button>
           )}
 

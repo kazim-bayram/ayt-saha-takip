@@ -381,8 +381,8 @@ const FormBuilder: React.FC = () => {
                 <ArrowLeft className="w-5 h-5" />
               </Link>
               <div>
-                <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Form Yapılandırma</h1>
-                <p className={`text-xs ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>İşçilerin dolduracağı soruları oluşturun</p>
+                <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Saha Formu Yapılandırma</h1>
+                <p className={`text-xs ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>Saha ekiplerinin dolduracağı proje form alanlarını oluşturun</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -415,7 +415,7 @@ const FormBuilder: React.FC = () => {
         {success && (
           <div className="flex items-center gap-3 p-4 rounded-xl bg-green-500/10 border border-green-500/30">
             <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
-            <p className="text-green-300 text-sm">Form kaydedildi ve yayınlandı. İşçiler yeni formu görebilir.</p>
+            <p className="text-green-300 text-sm">Form kaydedildi ve yayınlandı. Saha ekipleri yeni formu kullanarak kayıt oluşturabilir.</p>
           </div>
         )}
 
@@ -509,8 +509,8 @@ const FormBuilder: React.FC = () => {
                       <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
                         Seçenekler Listesi *
                       </label>
-                      <p className={`text-xs mb-2 ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
-                        İşçinin seçebileceği maddeleri ekleyin.
+                        <p className={`text-xs mb-2 ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
+                        Saha personelinin seçebileceği maddeleri ekleyin.
                       </p>
                       <OptionsManager
                         options={newField.options || []}
@@ -729,7 +729,7 @@ const FormBuilder: React.FC = () => {
                                   Seçenekler Listesi *
                                 </label>
                                 <p className={`text-xs mb-2 ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
-                                  İşçinin seçebileceği maddeleri ekleyin.
+                                  Saha personelinin seçebileceği maddeleri ekleyin.
                                 </p>
                                 <OptionsManager
                                   options={field.options || []}

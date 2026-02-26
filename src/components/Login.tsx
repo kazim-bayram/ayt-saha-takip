@@ -109,7 +109,7 @@ const Login: React.FC = () => {
             </svg>
           </div>
           <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            Saha Takip
+            AYT Mühendislik
           </h1>
         </div>
 
@@ -120,7 +120,7 @@ const Login: React.FC = () => {
             : 'bg-white/90 backdrop-blur-sm border-gray-200'
         }`}>
           <h2 className={`text-xl font-semibold mb-6 text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            Hoş Geldiniz
+            Sisteme Giriş
           </h2>
 
           {/* Hata Mesajı */}
@@ -143,7 +143,7 @@ const Login: React.FC = () => {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value.toLowerCase())}
-                  placeholder="Kullanıcı adınızı girin"
+                  placeholder="Kullanıcı adınızı yazın"
                   className={`w-full rounded-xl pl-12 pr-4 py-4 transition-all focus:outline-none focus:ring-2 focus:ring-safety-orange/20 ${
                     isDark 
                       ? 'bg-slate-900/50 border border-slate-600 text-white placeholder-concrete-500 focus:border-safety-orange' 
@@ -230,7 +230,7 @@ const Login: React.FC = () => {
           {/* Info text */}
           <div className="mt-6 text-center">
             <p className={`text-xs ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>
-              Hesap bilgilerinizi yöneticinizden alabilirsiniz.
+              Hesap bilgilerinizi sistem yöneticinizden alabilirsiniz.
             </p>
           </div>
         </div>

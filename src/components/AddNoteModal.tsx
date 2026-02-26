@@ -213,7 +213,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
       resetForm();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Not kaydedilemedi');
+      setError(err instanceof Error ? err.message : 'Kayıt kaydedilemedi');
     } finally {
       setSubmitting(false);
     }
@@ -243,7 +243,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
           }`}
         >
           <h2 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {editNote ? 'Notu Düzenle' : 'Saha Notu Ekle'}
+            {editNote ? 'Kaydı Düzenle' : 'Saha Kaydı Oluştur'}
           </h2>
           <button
             onClick={onClose}
@@ -400,7 +400,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
                 type="text"
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
-                placeholder="Örn: A Blok - Temel İşleri"
+                placeholder="Örn: A Blok - Temel İmalatı"
                 className={`w-full rounded-xl px-4 py-4 transition-all focus:outline-none focus:ring-2 focus:ring-safety-orange/20 ${
                   isDark
                     ? 'bg-slate-900/50 border border-slate-600 text-white placeholder-concrete-500 focus:border-safety-orange'
@@ -414,7 +414,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
             {schemaLoading ? (
               <div className="flex items-center gap-2 text-concrete-400 text-sm">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Form yükleniyor...
+                Form alanları yükleniyor...
               </div>
             ) : (
               fields.map((field) => (
@@ -468,7 +468,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="Sorunu, konumu veya ilgili detayları açıklayın..."
+                placeholder="İmalatı, konumu ve ilgili teknik detayları yazın..."
                 rows={5}
                 className={`w-full rounded-xl px-4 py-4 transition-all focus:outline-none focus:ring-2 focus:ring-safety-orange/20 resize-none ${
                   isDark
@@ -501,7 +501,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
                   Kaydediliyor...
                 </>
               ) : (
-                editNote ? 'Notu Güncelle' : 'Notu Kaydet'
+                editNote ? 'Kaydı Güncelle' : 'Kaydı Kaydet'
               )}
             </button>
           </div>

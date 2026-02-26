@@ -238,7 +238,7 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
                   >
                     <img
                       src={images[selectedImageIndex]}
-                      alt={`${note.projectName || note.title || 'Not'} ${selectedImageIndex + 1}`}
+                      alt={`${note.projectName || note.title || 'Kayıt'} ${selectedImageIndex + 1}`}
                       className="w-full h-auto max-h-[400px] object-contain"
                     />
                     
@@ -605,7 +605,7 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
           {/* Main Image */}
           <img
             src={images[selectedImageIndex]}
-            alt={`${note.projectName || note.title || 'Not'} ${selectedImageIndex + 1}`}
+            alt={`${note.projectName || note.title || 'Kayıt'} ${selectedImageIndex + 1}`}
             className="max-w-[90vw] max-h-[90vh] object-contain"
             onClick={(e) => e.stopPropagation()}
           />

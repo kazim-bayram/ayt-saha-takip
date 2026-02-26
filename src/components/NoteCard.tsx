@@ -80,7 +80,7 @@ const NoteCard: React.FC<NoteCardProps> = ({
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm('Bu notu silmek istediğinizden emin misiniz?')) {
+    if (window.confirm('Bu kaydı silmek istediğinizden emin misiniz?')) {
       onDelete?.();
     }
   };
