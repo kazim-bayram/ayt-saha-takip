@@ -10,19 +10,12 @@
  *
  * Usage:
  *   npx ts-node scripts/seedAdmin.ts
- *
- * Requirements:
- * - Place your Firebase Admin service account JSON as "serviceAccountKey.json"
- *   in the "scripts" directory (same folder as this file)
- * - Never commit that key to version control
  */
 
-import { initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
-import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+dotenv.config();
+
+import admin from 'firebase-admin';
 
 // Configuration for the initial admin
 const INITIAL_USERNAME = 'admin';
@@ -30,22 +23,56 @@ const INITIAL_PASSWORD = 'AytAdmin2026!';
 const INITIAL_DISPLAY_NAME = 'Sistem Yöneticisi';
 const AUTH_DOMAIN = 'ayt.local';
 
-// You'll need to download your service account key from Firebase Console
-// Project Settings > Service Accounts > Generate New Private Key
-// Save it as serviceAccountKey.json in the scripts folder
-// IMPORTANT: Never commit this file to version control!
+// Read env-based service account configuration
+const projectId = process.env.VITE_FIREBASE_PROJECT_ID;
+const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const serviceAccount = JSON.parse(
-  readFileSync(join(__dirname, 'serviceAccountKey.json'), 'utf-8')
-);
+if (!projectId) {
+  throw new Error(
+    'Missing VITE_FIREBASE_PROJECT_ID in .env. Please set VITE_FIREBASE_PROJECT_ID to your Firebase project ID.'
+  );
+}
 
-initializeApp({
-  credential: cert(serviceAccount)
-});
+if (!serviceAccountJson) {
+  throw new Error(
+    'Missing FIREBASE_SERVICE_ACCOUNT_KEY in .env. Please set FIREBASE_SERVICE_ACCOUNT_KEY to your service account JSON string.'
+  );
+}
 
-const db = getFirestore();
-const adminAuth = getAuth();
+let clientEmail: string | undefined;
+let privateKey: string | undefined;
+
+try {
+  const parsed = JSON.parse(serviceAccountJson);
+  clientEmail = parsed.client_email;
+  privateKey = parsed.private_key?.replace(/\\n/g, '\n');
+
+  if (!clientEmail || !privateKey) {
+    throw new Error(
+      'FIREBASE_SERVICE_ACCOUNT_KEY is missing required fields "client_email" or "private_key".'
+    );
+  }
+} catch (err) {
+  throw new Error(
+    'FIREBASE_SERVICE_ACCOUNT_KEY is not valid JSON. Ensure it is a single-line JSON string in .env.'
+  );
+}
+
+// Initialize Firebase Admin using environment variables
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId,
+      clientEmail,
+      privateKey
+    })
+  });
+}
+
+console.log(`Connected to Firebase project: ${projectId}`);
+
+const db = admin.firestore();
+const adminAuth = admin.auth();
 
 async function seedInitialAdmin(): Promise<void> {
   try {
@@ -84,7 +111,7 @@ async function seedInitialAdmin(): Promise<void> {
       role: 'admin',
       isActive: true,
       mustChangePassword: false,
-      createdAt: FieldValue.serverTimestamp()
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
     };
 
     if (userDoc.exists) {
