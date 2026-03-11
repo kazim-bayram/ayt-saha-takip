@@ -1,53 +1,49 @@
-# 🏗️ SiteNotes - Construction Field Note App
+# AYT Muhendislik - Saha Takip Sistemi
 
-A professional field note documentation app for construction sites, built with React, TypeScript, Firebase, and Tesseract.js OCR.
+A professional field documentation and tracking system for AYT Muhendislik, built with React, TypeScript, Firebase, and Tesseract.js OCR.
 
-![SiteNotes Banner](https://via.placeholder.com/800x400/1a2332/FF6B00?text=SiteNotes+-+Field+Documentation)
+> **v2.0.0:** Backend API integration, username-only authentication, and enhanced admin security!
+> **[Deployment Guide](./DEPLOYMENT_GUIDE.md)**
 
-> **🎉 NEW in v2.0.0:** Backend API integration, username-only authentication, and enhanced admin security!  
-> **[📖 View Upgrade Guide](./UPGRADE_SUMMARY.md)** | **[🚀 Quick Start](./QUICK_START.md)** | **[📦 Deployment Guide](./DEPLOYMENT_GUIDE.md)**
-
-## ✨ Features
+## Features
 
 ### For Field Workers
-- 📸 **Photo Documentation** - Capture or upload site images
-- 🔍 **Auto OCR** - Automatically extract text from images using Tesseract.js
-- 📝 **Easy Note Taking** - Document issues with title, project name, and description
-- 📱 **Mobile-First Design** - Touch-friendly interface for on-site use
-- 🔒 **Private Notes** - Workers can only view their own notes
+- Photo Documentation - Capture or upload site images
+- Auto OCR - Automatically extract text from images using Tesseract.js
+- Easy Note Taking - Document issues with title, project name, and description
+- Mobile-First Design - Touch-friendly interface for on-site use
+- Private Notes - Workers can only view their own notes
 
 ### For Managers (Admin)
-- 📊 **Dashboard View** - See all notes from all workers
-- 🔎 **Advanced Filters** - Filter by worker, project, or date range
-- 📋 **Full Details** - View complete note information with images
-- 👥 **Team Oversight** - Monitor field documentation activity
-- 🔐 **User Management** - Add users, reset passwords, disable accounts (v2.0+)
-- 🔑 **Admin Password Reset** - Force update any user's password (v2.0+)
-- 🗑️ **Soft Delete Users** - Disable accounts without losing data (v2.0+)
+- Dashboard View - See all notes from all workers
+- Advanced Filters - Filter by worker, project, or date range
+- Full Details - View complete note information with images
+- Team Oversight - Monitor field documentation activity
+- User Management - Add users, reset passwords, disable accounts
+- Admin Password Reset - Force update any user's password
+- Soft Delete Users - Disable accounts without losing data
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Frontend**: React 18 + TypeScript + Vite
 - **Styling**: TailwindCSS (custom industrial theme)
-- **Backend**: Firebase (Auth, Firestore, Storage) + Vercel Serverless Functions (v2.0+)
-- **Admin SDK**: Firebase Admin SDK for privileged operations (v2.0+)
+- **Backend**: Firebase (Auth, Firestore, Storage) + Vercel Serverless Functions
+- **Admin SDK**: Firebase Admin SDK for privileged operations
 - **OCR**: Tesseract.js (client-side, offline-capable)
 - **Icons**: Lucide React
 
-## 🚀 Getting Started
-
-> **⚡ IMPORTANT:** For v2.0 with backend features, follow **[QUICK_START.md](./QUICK_START.md)** instead!
+## Getting Started
 
 ### Prerequisites
 
 - Node.js 18+ and npm
 - A Firebase project
-- Vercel account (for backend API, v2.0+)
+- Vercel account (for backend API)
 
 ### 1. Clone & Install
 
 ```bash
-cd KeepClone
+cd AytKeep
 npm install
 ```
 
@@ -56,12 +52,12 @@ npm install
 1. Go to [Firebase Console](https://console.firebase.google.com/)
 2. Create a new project (or use existing)
 3. Enable the following services:
-   - **Authentication** → Email/Password sign-in
-   - **Firestore Database** → Create in production mode
-   - **Storage** → Create default bucket
+   - **Authentication** > Email/Password sign-in
+   - **Firestore Database** > Create in production mode
+   - **Storage** > Create default bucket
 
 4. Get your Firebase config:
-   - Project Settings → General → Your apps → Add web app
+   - Project Settings > General > Your apps > Add web app
    - Copy the config values
 
 ### 3. Environment Configuration
@@ -80,64 +76,30 @@ VITE_FIREBASE_APP_ID=your_app_id
 ### 4. Deploy Security Rules
 
 #### Firestore Rules
-In Firebase Console → Firestore → Rules, paste the contents of `firestore.rules`:
-
-```javascript
-rules_version = '2';
-
-service cloud.firestore {
-  match /databases/{database}/documents {
-    
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-    
-    function isAdmin() {
-      return isAuthenticated() && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-    
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-    
-    match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isAdmin();
-    }
-    
-    match /notes/{noteId} {
-      allow read: if isOwner(resource.data.userId) || isAdmin();
-      allow create: if isAuthenticated() && 
-                       request.resource.data.userId == request.auth.uid;
-      allow update: if isOwner(resource.data.userId);
-      allow delete: if isOwner(resource.data.userId) || isAdmin();
-    }
-  }
-}
-```
+In Firebase Console > Firestore > Rules, paste the contents of `firestore.rules`.
 
 #### Storage Rules
-In Firebase Console → Storage → Rules, paste the contents of `storage.rules`:
+In Firebase Console > Storage > Rules, paste the contents of `storage.rules`.
 
-```javascript
-rules_version = '2';
+### 5. Seed the Initial Admin User
 
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /notes/{userId}/{allPaths=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && 
-                      request.auth.uid == userId &&
-                      request.resource.size < 10 * 1024 * 1024 &&
-                      request.resource.contentType.matches('image/.*');
-    }
-  }
-}
+1. Download your service account key:
+   - Firebase Console > Project Settings > Service Accounts
+   - Generate New Private Key
+   - Save as `scripts/serviceAccountKey.json`
+
+2. Run the seed script:
+```bash
+npx ts-node scripts/seedAdmin.ts
 ```
 
-### 5. Run the App
+3. Log in with:
+   - **Username**: `admin`
+   - **Password**: `AytAdmin2026!`
+
+The login screen expects a username only. The app automatically appends `@ayt.local` to form the Firebase Auth email.
+
+### 6. Run the App
 
 ```bash
 npm run dev
@@ -145,70 +107,58 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173)
 
-## 👑 Setting Up an Admin User
-
-### Method 1: Firebase Console (Recommended)
-
-1. Register a user through the app
-2. Go to Firebase Console → Firestore Database
-3. Navigate to `users` collection
-4. Find the user document by their email/UID
-5. Click on the document → Edit field
-6. Change `role` from `"worker"` to `"admin"`
-7. Save
-
-### Method 2: Using the Seed Script
-
-1. Download your service account key:
-   - Firebase Console → Project Settings → Service Accounts
-   - Generate New Private Key
-   - Save as `scripts/serviceAccountKey.json`
-
-2. Get the user's UID:
-   - Firebase Console → Authentication → Users
-   - Copy the User UID
-
-3. Run the script:
-```bash
-npx ts-node scripts/seedAdmin.ts <USER_UID>
-```
-
-## 📁 Project Structure
+## Project Structure
 
 ```
-KeepClone/
-├── public/
-│   └── hardhat.svg          # App icon
+AytKeep/
+├── api/
+│   └── admin-actions.js       # Vercel serverless admin API
 ├── scripts/
-│   └── seedAdmin.ts         # Admin setup script
+│   └── seedAdmin.ts           # Admin seed script
 ├── src/
 │   ├── components/
-│   │   ├── AddNoteModal.tsx     # Create/edit note form
-│   │   ├── Dashboard.tsx        # Main dashboard view
-│   │   ├── LoadingSpinner.tsx   # Loading states
-│   │   ├── Login.tsx            # Auth screen
-│   │   ├── NoteCard.tsx         # Note display card
-│   │   └── NoteDetailModal.tsx  # Full note view
+│   │   ├── AddNoteModal.tsx
+│   │   ├── AddUserModal.tsx
+│   │   ├── Dashboard.tsx
+│   │   ├── LoadingSpinner.tsx
+│   │   ├── Login.tsx
+│   │   ├── NoteCard.tsx
+│   │   ├── NoteDetailModal.tsx
+│   │   ├── ProfileSettings.tsx
+│   │   ├── UserManagement.tsx
+│   │   └── UserProfileMenu.tsx
 │   ├── contexts/
-│   │   └── AuthContext.tsx      # Auth state management
+│   │   ├── AuthContext.tsx
+│   │   └── ThemeContext.tsx
 │   ├── firebase/
-│   │   └── config.ts            # Firebase initialization
+│   │   └── config.ts
 │   ├── hooks/
-│   │   ├── useNotes.ts          # Notes CRUD operations
-│   │   └── useOCR.ts            # Tesseract.js OCR
+│   │   ├── useNotes.ts
+│   │   └── useOCR.ts
+│   ├── pages/
+│   │   └── TablePage.tsx
+│   ├── services/
+│   │   └── adminApi.ts
 │   ├── types/
-│   │   └── index.ts             # TypeScript interfaces
+│   │   └── index.ts
 │   ├── App.tsx
 │   ├── index.css
 │   └── main.tsx
-├── firestore.rules              # Firestore security rules
-├── storage.rules                # Storage security rules
-├── tailwind.config.js
+├── firestore.rules
+├── storage.rules
+├── vercel.json
 ├── package.json
 └── README.md
 ```
 
-## 🎨 Design System
+## Authentication System
+
+The app uses a **username-only** login system:
+- Users enter only their username on the login screen
+- The app automatically appends `@ayt.local` to create the Firebase Auth email
+- This keeps the internal email invisible to end users
+
+## Design System
 
 ### Color Palette
 
@@ -226,31 +176,19 @@ KeepClone/
 - **Primary Font**: Inter (UI elements)
 - **Monospace**: JetBrains Mono (code, data)
 
-## 🔐 Security Rules Explained
+## Security Rules
 
 ### Workers
-- ✅ Create their own notes
-- ✅ Read their own notes
-- ✅ Update their own notes
-- ✅ Delete their own notes
-- ❌ Cannot read other workers' notes
+- Create, read, update, and delete their own notes
+- Cannot read other workers' notes
 
 ### Admins
-- ✅ Read all notes
-- ✅ Delete any note
-- ✅ Change user roles
-- ❌ Cannot create notes (use worker account)
+- Read all notes
+- Delete any note
+- Change user roles
+- Manage user accounts (reset password, disable, restore)
 
-## 📱 Mobile Experience
-
-The app is designed mobile-first with:
-- Large touch targets (min 44px)
-- Responsive masonry grid
-- Swipe-friendly modals
-- Camera integration for quick photos
-- 16px minimum font size (prevents iOS zoom)
-
-## 🔧 Development
+## Development
 
 ```bash
 # Start dev server
@@ -266,10 +204,6 @@ npm run preview
 npm run lint
 ```
 
-## 📄 License
+## License
 
-MIT License - Feel free to use this for your construction projects!
-
----
-
-Built with 🧱 for construction teams everywhere.
+MIT License
