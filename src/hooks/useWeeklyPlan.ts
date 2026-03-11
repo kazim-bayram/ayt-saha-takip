@@ -185,6 +185,28 @@ export const useWeeklyPlan = () => {
   // Status change + automatic system_log
   // ---------------------------------------------------------------------------
 
+  /** Update any task fields by taskId. Uses updateDoc for partial updates. */
+  const updateTask = useCallback(
+    async (taskId: string, updateData: Partial<Omit<WeeklyTask, 'id' | 'createdAt'>>): Promise<void> => {
+      if (!currentUser || !userProfile) {
+        throw new Error('User not authenticated');
+      }
+      setError(null);
+      try {
+        const taskRef = doc(db, 'weekly_tasks', taskId);
+        const filtered = Object.fromEntries(
+          Object.entries(updateData).filter(([, v]) => v !== undefined)
+        ) as Record<string, unknown>;
+        await updateDoc(taskRef, { ...filtered, updatedAt: Timestamp.now() });
+      } catch (err) {
+        console.error('Error updating task:', err);
+        setError('Görev güncellenemedi.');
+        throw err;
+      }
+    },
+    [currentUser, userProfile]
+  );
+
   const updateTaskStatus = useCallback(
     async (taskId: string, newStatus: TaskStatus, previousStatus?: TaskStatus): Promise<void> => {
       if (!currentUser || !userProfile) {
@@ -302,6 +324,7 @@ export const useWeeklyPlan = () => {
     getAllTasks,
     getNotes,
     createTask,
+    updateTask,
     updateTaskStatus,
     getTaskMessages,
     addTaskMessage,

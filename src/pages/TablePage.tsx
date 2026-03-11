@@ -13,7 +13,8 @@ import { useNotes } from '../hooks/useNotes';
 import { useNoteSchema } from '../hooks/useNoteSchema';
 import { useWeeklyPlan } from '../hooks/useWeeklyPlan';
 import {
-  Note, NoteFormData, WeeklyTask, normalizeStatus, NOTE_STATUS_CONFIG,
+  Note, NoteFormData, WeeklyTask, TaskStatus, NoteStatus,
+  normalizeStatus, NOTE_STATUS_CONFIG,
   getWorkDate, formatWorkDate, getNoteFieldValue,
 } from '../types';
 import AddNoteModal from '../components/AddNoteModal';
@@ -22,6 +23,25 @@ import TaskThreadModal from '../components/TaskThreadModal';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const CORE_FIELD_IDS = ['category', 'ada', 'parsel', 'date', 'progressLevel'] as const;
+
+/** Map NoteStatus or TaskStatus to unified display label and color for Master Project Log */
+function getUnifiedStatusDisplay(
+  type: RowType,
+  status: NoteStatus | TaskStatus | string
+): { label: string; statusColor: 'green' | 'red' | 'yellow' | 'blue' } {
+  if (type === 'note') {
+    const s = normalizeStatus(status);
+    return {
+      label: NOTE_STATUS_CONFIG[s]?.label ?? s,
+      statusColor: s === 'Onay' ? 'green' : 'red',
+    };
+  }
+  const s = status as TaskStatus;
+  if (s === 'Tamamlandı') return { label: 'Tamamlandı', statusColor: 'green' };
+  if (s === 'Devam Ediyor') return { label: 'Devam Ediyor', statusColor: 'blue' };
+  if (s === 'Bekliyor') return { label: 'Bekliyor', statusColor: 'yellow' };
+  return { label: String(status) || '–', statusColor: 'yellow' };
+}
 
 type RowType = 'note' | 'task';
 
@@ -58,6 +78,10 @@ const TablePage: React.FC = () => {
   } = useNotes();
 
   const { getAllTasks } = useWeeklyPlan();
+
+  const refreshTasks = useCallback(async () => {
+    try { setTasks(await getAllTasks()); } catch { /* handled */ }
+  }, [getAllTasks]);
   const [tasks, setTasks] = useState<WeeklyTask[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
 
@@ -86,17 +110,17 @@ const TablePage: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [threadTask, setThreadTask] = useState<WeeklyTask | null>(null);
 
-  // Build unified rows
+  // Build unified rows (Master Project Log: notes + tasks merged)
   const allRows: UnifiedRow[] = useMemo(() => {
     const noteRows: UnifiedRow[] = notes.map(note => {
-      const status = normalizeStatus(note.status);
+      const { label, statusColor } = getUnifiedStatusDisplay('note', note.status);
       return {
         type: 'note' as RowType,
         id: note.id,
         projectName: note.projectName || '',
         responsible: note.userName || note.userEmail || '',
-        statusLabel: NOTE_STATUS_CONFIG[status]?.label || 'Eksik',
-        statusColor: status === 'Onay' ? 'green' : 'red',
+        statusLabel: label,
+        statusColor,
         dateStr: getWorkDate(note),
         description: note.content || '',
         note,
@@ -108,13 +132,14 @@ const TablePage: React.FC = () => {
       const dateStr = created
         ? `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}-${String(created.getDate()).padStart(2, '0')}`
         : '';
+      const { label, statusColor } = getUnifiedStatusDisplay('task', task.status);
       return {
         type: 'task' as RowType,
         id: task.id,
         projectName: task.projectId || '',
         responsible: task.assignedTo || '',
-        statusLabel: task.status,
-        statusColor: task.status === 'Tamamlandı' ? 'green' : task.status === 'Devam Ediyor' ? 'blue' : 'yellow',
+        statusLabel: label,
+        statusColor,
         dateStr,
         description: task.title + (task.description ? ` – ${task.description}` : ''),
         task,
@@ -183,7 +208,7 @@ const TablePage: React.FC = () => {
   const handleExport = useCallback(() => {
     const data = displayRows.map(row => {
       const base: Record<string, string> = {
-        'Tür': row.type === 'note' ? 'Saha Notu' : 'Görev',
+        'Tür': row.type === 'note' ? 'Saha Notu' : 'Haftalık Plan',
         'Proje': row.projectName,
         'Sorumlu / Ekleyen': row.responsible,
         'Durum': row.statusLabel,
@@ -225,8 +250,12 @@ const TablePage: React.FC = () => {
   };
 
   const handleRowClick = (row: UnifiedRow) => {
-    if (row.note) { setSelectedNote(row.note); setIsDetailModalOpen(true); }
-    else if (row.task) { setThreadTask(row.task); }
+    if (row.note) {
+      setSelectedNote(row.note);
+      setIsDetailModalOpen(true);
+    } else if (row.task) {
+      setThreadTask(row.task);
+    }
   };
 
   const loading = notesLoading || tasksLoading;
@@ -248,7 +277,7 @@ const TablePage: React.FC = () => {
             <div className="flex items-center gap-3">
               <FileSpreadsheet className={`w-5 h-5 ${isDark ? 'text-safety-orange' : 'text-safety-orange-dark'}`} />
               <div>
-                <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Genel Proje Tablosu</h1>
+                <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Master Proje Günlüğü</h1>
                 <p className={`text-xs ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>
                   {displayRows.length} kayıt ({notes.length} not + {tasks.length} görev)
                   {(filters.project || filters.responsible || filters.status || filters.type || filterDate) ? ' (filtrelenmiş)' : ''}
@@ -302,12 +331,12 @@ const TablePage: React.FC = () => {
                 <tr className="bg-gray-700/80 text-white">
                   <th className="py-1 px-2 border-r border-gray-600/50" />
                   <th className="py-1 px-2 border-r border-gray-600/50">
-                    <select value={filters.type} onChange={e => setFilters(f => ({ ...f, type: e.target.value as any }))}
+                    <select value={filters.type} onChange={e => setFilters(f => ({ ...f, type: e.target.value as '' | 'note' | 'task' }))}
                       className="w-full py-1 px-2 text-sm rounded border border-gray-500 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-safety-orange"
                     >
                       <option value="">Tümü</option>
-                      <option value="note">Not</option>
-                      <option value="task">Görev</option>
+                      <option value="note">Saha Notu</option>
+                      <option value="task">Haftalık Plan</option>
                     </select>
                   </th>
                   <th className="sticky left-0 z-20 py-1 px-2 border-r border-gray-600/50 bg-gray-700/80 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.3)]">
@@ -364,8 +393,10 @@ const TablePage: React.FC = () => {
                     const rowBg = isOdd ? (isDark ? 'bg-slate-900/30' : 'bg-gray-50') : (isDark ? 'bg-slate-850' : 'bg-white');
                     const stickyBg = isOdd ? (isDark ? 'bg-slate-900/30' : 'bg-gray-50') : (isDark ? 'bg-slate-850' : 'bg-white');
                     return (
-                      <tr key={`${row.type}-${row.id}`}
-                        className={`border-t transition-colors ${rowBg} ${isDark ? 'border-slate-700/50 hover:bg-slate-800/50' : 'border-gray-200 hover:bg-blue-50'}`}
+                      <tr
+                        key={`${row.type}-${row.id}`}
+                        onClick={() => handleRowClick(row)}
+                        className={`border-t transition-colors cursor-pointer ${rowBg} ${isDark ? 'border-slate-700/50 hover:bg-slate-800/50' : 'border-gray-200 hover:bg-blue-50'}`}
                       >
                         <td className={`py-2 px-3 font-mono whitespace-nowrap ${isDark ? 'text-concrete-300' : 'text-gray-600'}`}>{idx + 1}</td>
                         <td className={`py-2 px-3 border-r whitespace-nowrap ${isDark ? 'border-slate-700/50' : 'border-gray-200'}`}>
@@ -374,15 +405,11 @@ const TablePage: React.FC = () => {
                               ? isDark ? 'bg-purple-500/20 text-purple-300' : 'bg-purple-100 text-purple-700'
                               : isDark ? 'bg-cyan-500/20 text-cyan-300' : 'bg-cyan-100 text-cyan-700'
                           }`}>
-                            {row.type === 'note' ? 'Kayıt' : 'Plan'}
+                            {row.type === 'note' ? 'Saha Notu' : 'Haftalık Plan'}
                           </span>
                         </td>
                         <td className={`sticky left-0 z-[5] py-2 px-3 border-r whitespace-nowrap ${stickyBg} ${isDark ? 'border-slate-700/50 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)]' : 'border-gray-200 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.08)]'}`}>
-                          <button type="button" onClick={() => handleRowClick(row)}
-                            className={`text-left w-full hover:underline cursor-pointer focus:outline-none ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-500 hover:text-blue-400'}`}
-                          >
-                            {row.projectName || '-'}
-                          </button>
+                          <span className={`${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{row.projectName || '-'}</span>
                         </td>
                         <td className={`py-2 px-3 border-r whitespace-nowrap ${isDark ? 'border-slate-700/50 text-concrete-300' : 'border-gray-200 text-gray-700'}`}>
                           {row.responsible || '-'}
@@ -411,7 +438,7 @@ const TablePage: React.FC = () => {
                             {row.statusLabel}
                           </span>
                         </td>
-                        <td className={`py-2 px-3 whitespace-nowrap ${isDark ? 'text-concrete-400' : 'text-gray-600'}`}>
+                        <td className={`py-2 px-3 whitespace-nowrap ${isDark ? 'text-concrete-400' : 'text-gray-600'}`} onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-1">
                             {row.note && canEditNote(row.note) && (
                               <button onClick={() => handleEditNote(row.note!)}
@@ -457,6 +484,7 @@ const TablePage: React.FC = () => {
         task={threadTask}
         isOpen={!!threadTask}
         onClose={() => setThreadTask(null)}
+        onStatusChanged={refreshTasks}
       />
     </div>
   );

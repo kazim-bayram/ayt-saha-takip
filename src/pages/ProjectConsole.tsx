@@ -75,6 +75,18 @@ function formatWeekRange(ws: string): string {
   return `${fmt(monday)} – ${fmt(sunday)}`;
 }
 
+/** Normalize any status string to TaskStatus for strict column matching */
+function normalizeTaskStatus(s: string | undefined): TaskStatus {
+  if (!s || typeof s !== 'string') return 'Bekliyor';
+  const t = s.trim();
+  if (t === 'Bekliyor' || t === 'Devam Ediyor' || t === 'Tamamlandı') return t as TaskStatus;
+  // Fuzzy fallbacks for legacy/typos
+  if (/bekliyor|waiting/i.test(t)) return 'Bekliyor';
+  if (/devam|in_progress|ongoing/i.test(t)) return 'Devam Ediyor';
+  if (/tamam|completed|done|onay/i.test(t)) return 'Tamamlandı';
+  return 'Bekliyor';
+}
+
 /** Map a note's status to a Kanban column */
 function mapNoteToKanbanStatus(noteStatus: string): TaskStatus {
   if (noteStatus === 'Onay') return 'Tamamlandı';
@@ -567,8 +579,14 @@ const ProjectConsole: React.FC = () => {
         getTasksByWeek(currentWeek),
         getAllTasks(),
       ]);
-      setTasks(weekTasks);
-      setAllTasks(all);
+      // Normalize task statuses to ensure column match
+      const normalizedWeek = weekTasks.map(t => ({ ...t, status: normalizeTaskStatus(t.status) }));
+      const normalizedAll = all.map(t => ({ ...t, status: normalizeTaskStatus(t.status) }));
+      setTasks(normalizedWeek);
+      setAllTasks(normalizedAll);
+      // Debug: verify week/format sync
+      console.log('Current Week Filter:', currentWeek);
+      console.log('Fetched Tasks:', weekTasks);
     } catch {
       setFetchError('Veriler yüklenirken bir hata oluştu.');
     } finally {
@@ -586,9 +604,11 @@ const ProjectConsole: React.FC = () => {
     type CardEntry = { task: WeeklyTask; isNote: boolean; noteRef?: Note };
     const map: Record<TaskStatus, CardEntry[]> = { 'Bekliyor': [], 'Devam Ediyor': [], 'Tamamlandı': [] };
 
-    // Add real tasks
+    // Add real tasks (status already normalized; fallback for safety)
     tasks.forEach((t) => {
-      const col = map[t.status] ? t.status : 'Bekliyor';
+      if (!t || t.status == null) return;
+      const col = STATUSES.includes(t.status as TaskStatus) ? (t.status as TaskStatus) : normalizeTaskStatus(t.status);
+      map[col] = map[col] ?? [];
       map[col].push({ task: t, isNote: false });
     });
 

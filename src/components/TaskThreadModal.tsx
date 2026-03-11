@@ -273,6 +273,7 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
   const [msgText, setMsgText] = useState('');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<TaskThreadMessage | null>(null);
   const [isRFIMode, setIsRFIMode] = useState(false);
@@ -328,11 +329,13 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
 
   const handleStatusChange = async (newStatus: TaskStatus) => {
     if (!task) return;
+    setStatusUpdating(true);
     try {
       await updateTaskStatus(task.id, newStatus, task.status);
       onStatusChanged?.();
       await loadMessages();
     } catch { /* error surfaced via hook */ }
+    finally { setStatusUpdating(false); }
   };
 
   const handleMarkRFIResponded = async (msgId: string) => {
@@ -374,12 +377,24 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
               {task.description && (
                 <p className={`text-xs mt-2 line-clamp-2 ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>{task.description}</p>
               )}
-              <div className="flex gap-1.5 mt-3 flex-wrap">
-                {(['Bekliyor', 'Devam Ediyor', 'Tamamlandı'] as TaskStatus[]).filter(s => s !== task.status).map(s => (
-                  <button key={s} onClick={() => handleStatusChange(s)}
-                    className={`text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors ${isDark ? 'bg-slate-800 text-concrete-300 hover:bg-slate-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                  >{s}</button>
-                ))}
+              <div className="flex gap-1.5 mt-3 flex-wrap items-center">
+                <label className={`text-xs font-medium ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>Durum:</label>
+                <select
+                  value={task.status}
+                  onChange={(e) => handleStatusChange(e.target.value as TaskStatus)}
+                  disabled={statusUpdating}
+                  className={`text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors focus:outline-none focus:ring-1 focus:ring-safety-orange/50 ${
+                    statusUpdating ? 'opacity-60 cursor-not-allowed' : ''
+                  } ${isDark ? 'bg-slate-800 border-slate-600 text-concrete-300' : 'bg-gray-100 border-gray-300 text-gray-700'}`}
+                >
+                  <option value="Bekliyor">Bekliyor</option>
+                  <option value="Devam Ediyor">Devam Ediyor</option>
+                  <option value="Tamamlandı">Tamamlandı</option>
+                </select>
+                {statusUpdating && (
+                  <Loader2 className={`w-3.5 h-3.5 animate-spin ${isDark ? 'text-concrete-400' : 'text-gray-500'}`} />
+                )}
+                <span className="flex-1" />
                 <button
                   onClick={() => generateThreadPDF(task, messages)}
                   className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors ${isDark ? 'bg-slate-800 text-concrete-300 hover:bg-slate-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
