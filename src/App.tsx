@@ -5,32 +5,31 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import TablePage from './pages/TablePage';
 import FormBuilder from './pages/admin/FormBuilder';
-import WeeklyPlan from './pages/WeeklyPlan';
+import ProjectConsole from './pages/ProjectConsole';
+import AppLayout from './components/AppLayout';
 import LoadingSpinner from './components/LoadingSpinner';
 import ChangePasswordModal from './components/ChangePasswordModal';
+import ProfileSettings from './components/ProfileSettings';
+import UserManagement from './components/UserManagement';
 import { CheckCircle2 } from 'lucide-react';
 
-// Protect /table-view: redirect workers to home
 const AdminTableRoute: React.FC = () => {
   const { userProfile } = useAuth();
-  if (userProfile?.role !== 'admin') {
-    return <Navigate to="/" replace />;
-  }
+  if (userProfile?.role !== 'admin') return <Navigate to="/" replace />;
   return <TablePage />;
 };
 
-// Protect /form-builder: redirect workers to home
 const AdminFormBuilderRoute: React.FC = () => {
   const { userProfile } = useAuth();
-  if (userProfile?.role !== 'admin') {
-    return <Navigate to="/" replace />;
-  }
+  if (userProfile?.role !== 'admin') return <Navigate to="/" replace />;
   return <FormBuilder />;
 };
 
 const App: React.FC = () => {
-  const { currentUser, userProfile, loading } = useAuth();
+  const { currentUser, userProfile, loading, isAdmin } = useAuth();
   const [showPasswordChangeToast, setShowPasswordChangeToast] = useState(false);
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
+  const [showUserManagement, setShowUserManagement] = useState(false);
 
   useEffect(() => {
     if (!showPasswordChangeToast) return;
@@ -38,22 +37,16 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, [showPasswordChangeToast]);
 
-  // Yükleniyor durumunu kontrol et
   if (loading) {
     return <LoadingSpinner fullScreen message="AYT Mühendislik Takip Sistemi yükleniyor..." />;
   }
 
-  // Giriş yapılmadıysa login ekranını göster
-  if (!currentUser) {
-    return <Login />;
-  }
+  if (!currentUser) return <Login />;
 
-  // Kullanıcı girişi yapıldı ama profil yüklenmediyse
   if (!userProfile) {
     return <LoadingSpinner fullScreen message="Profiliniz yükleniyor..." />;
   }
 
-  // İlk giriş: Şifre değiştirme zorunlu
   if (userProfile.mustChangePassword === true) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900">
@@ -62,16 +55,26 @@ const App: React.FC = () => {
     );
   }
 
-  // Ana panel
   return (
     <>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/table-view" element={<AdminTableRoute />} />
-        <Route path="/form-builder" element={<AdminFormBuilderRoute />} />
-        <Route path="/weekly-plan" element={<WeeklyPlan />} />
-      </Routes>
-      {/* Toast: Şifre değiştirildi */}
+      <AppLayout
+        onOpenProfileSettings={() => setShowProfileSettings(true)}
+        onOpenUserManagement={() => setShowUserManagement(true)}
+      >
+        <Routes>
+          <Route path="/" element={<ProjectConsole />} />
+          <Route path="/saha-notlari" element={<Dashboard />} />
+          <Route path="/table-view" element={<AdminTableRoute />} />
+          <Route path="/form-builder" element={<AdminFormBuilderRoute />} />
+          {/* Legacy route redirects to home */}
+          <Route path="/weekly-plan" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AppLayout>
+
+      {/* Global modals */}
+      <ProfileSettings isOpen={showProfileSettings} onClose={() => setShowProfileSettings(false)} />
+      {isAdmin && <UserManagement isOpen={showUserManagement} onClose={() => setShowUserManagement(false)} />}
+
       {showPasswordChangeToast && (
         <div className="fixed bottom-4 right-4 z-[110] flex items-center gap-3 px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/30 shadow-lg animate-slide-up">
           <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />

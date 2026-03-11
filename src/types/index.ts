@@ -242,7 +242,6 @@ export interface Comment {
 
 export type TaskStatus = 'Bekliyor' | 'Devam Ediyor' | 'Tamamlandı';
 
-// Tailwind utility classes for category color coding
 export type TaskCategoryColor =
   | 'bg-blue-100 text-blue-800'
   | 'bg-green-100 text-green-800'
@@ -259,10 +258,22 @@ export interface WeeklyTask {
   /** ISO week string, e.g. "2026-W08" */
   weekString: string;
   color: TaskCategoryColor;
-  /** User identifier or display name, depending on usage */
   assignedTo: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+
+  /** Finish-to-Start dependency: IDs of tasks that must complete before this one starts */
+  dependencies?: string[];
+  /** Planned effort in hours */
+  estimatedHours?: number;
+  /** Actual effort logged */
+  actualHours?: number;
+  /** Material cost in TRY */
+  materialCosts?: number;
+  /** Planned start date (ISO string) for Gantt/timeline */
+  plannedStart?: string;
+  /** Planned end date (ISO string) for Gantt/timeline */
+  plannedEnd?: string;
 }
 
 export type TaskMessageType = 'comment' | 'system_log';
@@ -275,11 +286,69 @@ export interface TaskThreadMessage {
   content: string;
   createdAt: Timestamp;
   messageType: TaskMessageType;
-  /** Image attachments stored in Firebase Storage */
   imageUrls?: string[];
-  /** ID of the message being replied to */
   replyToId?: string | null;
-  /** Short preview of the quoted message content */
   replyToSnippet?: string | null;
+  /** When true the message is treated as an official RFI */
+  isRFI?: boolean;
+  /** Deadline by which the RFI must be answered */
+  rfiResponseDeadline?: Timestamp | null;
+  /** Timestamp when the RFI was answered */
+  rfiRespondedAt?: Timestamp | null;
 }
+
+// ---------------------------------------------------------------------------
+// Unified timeline item – merges tasks and legacy notes into one view
+// ---------------------------------------------------------------------------
+
+export type TimelineItemSource = 'task' | 'note';
+
+export interface TimelineItem {
+  id: string;
+  source: TimelineItemSource;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  date: Date;
+  color: TaskCategoryColor;
+  assignedTo: string;
+  projectName: string;
+  /** Original note reference (if source==='note') */
+  noteRef?: Note;
+  /** Original task reference (if source==='task') */
+  taskRef?: WeeklyTask;
+}
+
+/** Map a legacy note to a TimelineItem so it can appear on the Kanban/calendar */
+export const noteToTimelineItem = (note: Note): TimelineItem => {
+  const date = note.createdAt?.toDate?.() ?? new Date();
+  return {
+    id: `note-${note.id}`,
+    source: 'note',
+    title: note.projectName || 'Saha Notu',
+    description: note.content,
+    status: note.status === 'Onay' ? 'Tamamlandı' : 'Bekliyor',
+    date,
+    color: note.status === 'Onay' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800',
+    assignedTo: note.userName || note.userEmail,
+    projectName: note.projectName,
+    noteRef: note,
+  };
+};
+
+export const taskToTimelineItem = (task: WeeklyTask): TimelineItem => {
+  const date = task.createdAt?.toDate?.() ?? new Date();
+  return {
+    id: `task-${task.id}`,
+    source: 'task',
+    title: task.title,
+    description: task.description,
+    status: task.status,
+    date,
+    color: task.color,
+    assignedTo: task.assignedTo,
+    projectName: task.projectId,
+    taskRef: task,
+  };
+};
 

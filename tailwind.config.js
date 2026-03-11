@@ -8,7 +8,6 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Industrial color palette
         slate: {
           850: '#1a2332',
           950: '#0d1117'
@@ -43,6 +42,11 @@ export default {
           700: '#334e68',
           800: '#243b53',
           900: '#102a43',
+        },
+        rfi: {
+          border: '#f59e0b',
+          bg: '#78350f',
+          text: '#fbbf24',
         }
       },
       fontFamily: {
@@ -52,11 +56,18 @@ export default {
       boxShadow: {
         'industrial': '0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1)',
         'industrial-lg': '0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1)',
+        'glow-orange': '0 0 15px rgba(255,107,0,0.15)',
+      },
+      width: {
+        'sidebar': '260px',
+        'sidebar-collapsed': '72px',
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'slide-up': 'slideUp 0.3s ease-out',
         'fade-in': 'fadeIn 0.2s ease-out',
+        'slide-left': 'slideLeft 0.25s ease-out',
+        'slide-right': 'slideRight 0.25s ease-out',
       },
       keyframes: {
         slideUp: {
@@ -66,6 +77,14 @@ export default {
         fadeIn: {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
+        },
+        slideLeft: {
+          '0%': { transform: 'translateX(100%)' },
+          '100%': { transform: 'translateX(0)' },
+        },
+        slideRight: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(0)' },
         },
       },
     },

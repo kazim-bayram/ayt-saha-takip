@@ -16,7 +16,7 @@ import {
   getDownloadURL
 } from 'firebase/storage';
 import { db, storage } from '../firebase/config';
-import { WeeklyTask, TaskStatus, TaskThreadMessage } from '../types';
+import { WeeklyTask, TaskStatus, TaskThreadMessage, Note } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
 export type CreateTaskInput = Omit<WeeklyTask, 'id' | 'createdAt' | 'updatedAt'>;
@@ -26,6 +26,8 @@ export interface AddMessageInput {
   images?: File[];
   replyToId?: string;
   replyToSnippet?: string;
+  isRFI?: boolean;
+  rfiResponseDeadline?: Date;
 }
 
 export const useWeeklyPlan = () => {
@@ -34,7 +36,7 @@ export const useWeeklyPlan = () => {
   const [error, setError] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------------
-  // Image upload (mirrors useNotes pattern, scoped to task_attachments/)
+  // Image upload
   // ---------------------------------------------------------------------------
 
   const uploadTaskImages = useCallback(
@@ -53,7 +55,7 @@ export const useWeeklyPlan = () => {
   );
 
   // ---------------------------------------------------------------------------
-  // Tasks CRUD
+  // Tasks CRUD (with resilient error handling)
   // ---------------------------------------------------------------------------
 
   const getTasksByWeek = useCallback(
@@ -79,7 +81,76 @@ export const useWeeklyPlan = () => {
         console.error('Error fetching weekly tasks:', err);
         setError('Haftalık görevler yüklenirken bir hata oluştu.');
         setLoading(false);
-        throw err;
+        return [];
+      }
+    },
+    []
+  );
+
+  /** Fetch ALL tasks (for monthly/timeline views or analytics) */
+  const getAllTasks = useCallback(async (): Promise<WeeklyTask[]> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const tasksRef = collection(db, 'weekly_tasks');
+      const q = query(tasksRef, orderBy('createdAt', 'asc'));
+      const snapshot = await getDocs(q);
+      const tasks: WeeklyTask[] = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Omit<WeeklyTask, 'id'>)
+      }));
+      setLoading(false);
+      return tasks;
+    } catch (err) {
+      console.error('Error fetching all tasks:', err);
+      setError('Görevler yüklenirken bir hata oluştu.');
+      setLoading(false);
+      return [];
+    }
+  }, []);
+
+  /** Fetch notes for cross-data integration */
+  const getNotes = useCallback(async (): Promise<Note[]> => {
+    try {
+      const notesRef = collection(db, 'notes');
+      const q = query(notesRef, orderBy('createdAt', 'asc'));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Omit<Note, 'id'>)
+      }));
+    } catch (err) {
+      console.error('Error fetching notes for timeline:', err);
+      return [];
+    }
+  }, []);
+
+  /** Get tasks for a month range (for monthly calendar) */
+  const getTasksByMonth = useCallback(
+    async (year: number, month: number): Promise<WeeklyTask[]> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const tasksRef = collection(db, 'weekly_tasks');
+        const q = query(tasksRef, orderBy('createdAt', 'asc'));
+        const snapshot = await getDocs(q);
+        const allTasks: WeeklyTask[] = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as Omit<WeeklyTask, 'id'>)
+        }));
+
+        const filtered = allTasks.filter(t => {
+          const d = t.createdAt?.toDate?.();
+          if (!d) return false;
+          return d.getFullYear() === year && d.getMonth() === month;
+        });
+        setLoading(false);
+        return filtered;
+      } catch (err) {
+        console.error('Error fetching monthly tasks:', err);
+        setError('Aylık görevler yüklenirken bir hata oluştu.');
+        setLoading(false);
+        return [];
       }
     },
     []
@@ -90,11 +161,8 @@ export const useWeeklyPlan = () => {
       if (!currentUser || !userProfile) {
         throw new Error('User not authenticated');
       }
-
       setError(null);
-
       const now = Timestamp.now();
-
       const payload: Omit<WeeklyTask, 'id'> = {
         projectId: data.projectId,
         title: data.title,
@@ -104,9 +172,14 @@ export const useWeeklyPlan = () => {
         color: data.color,
         assignedTo: data.assignedTo,
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
+        dependencies: data.dependencies || [],
+        estimatedHours: data.estimatedHours || 0,
+        actualHours: data.actualHours || 0,
+        materialCosts: data.materialCosts || 0,
+        plannedStart: data.plannedStart || '',
+        plannedEnd: data.plannedEnd || '',
       };
-
       const docRef = await addDoc(collection(db, 'weekly_tasks'), payload);
       return docRef.id;
     },
@@ -122,9 +195,7 @@ export const useWeeklyPlan = () => {
       if (!currentUser || !userProfile) {
         throw new Error('User not authenticated');
       }
-
       setError(null);
-
       try {
         const taskRef = doc(db, 'weekly_tasks', taskId);
         await updateDoc(taskRef, {
@@ -144,6 +215,9 @@ export const useWeeklyPlan = () => {
           imageUrls: [],
           replyToId: null,
           replyToSnippet: null,
+          isRFI: false,
+          rfiResponseDeadline: null,
+          rfiRespondedAt: null,
           createdAt: Timestamp.now()
         });
       } catch (err) {
@@ -202,23 +276,40 @@ export const useWeeklyPlan = () => {
         imageUrls,
         replyToId: input.replyToId ?? null,
         replyToSnippet: input.replyToSnippet ?? null,
+        isRFI: input.isRFI ?? false,
+        rfiResponseDeadline: input.rfiResponseDeadline
+          ? Timestamp.fromDate(input.rfiResponseDeadline)
+          : null,
+        rfiRespondedAt: null,
         createdAt: now
       };
 
       const docRef = await addDoc(collection(db, 'task_messages'), payload);
-
       return { id: docRef.id, ...payload };
     },
     [currentUser, userProfile, uploadTaskImages]
+  );
+
+  /** Mark an existing RFI message as responded */
+  const markRFIResponded = useCallback(
+    async (messageId: string): Promise<void> => {
+      const msgRef = doc(db, 'task_messages', messageId);
+      await updateDoc(msgRef, { rfiRespondedAt: Timestamp.now() });
+    },
+    []
   );
 
   return {
     loading,
     error,
     getTasksByWeek,
+    getTasksByMonth,
+    getAllTasks,
+    getNotes,
     createTask,
     updateTaskStatus,
     getTaskMessages,
-    addTaskMessage
+    addTaskMessage,
+    markRFIResponded,
   };
 };

@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import {
   Plus,
   X,
@@ -13,24 +12,19 @@ import {
   SlidersHorizontal,
   Tag,
   Trash2,
-  FileSpreadsheet,
-  Settings2
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNotes } from '../hooks/useNotes';
 import { useNoteSchema } from '../hooks/useNoteSchema';
-import { Note, FilterOptions, NoteFormData, normalizeStatus, getNoteFieldValue } from '../types';
+import { Note, FilterOptions, NoteFormData, getNoteFieldValue } from '../types';
 import NoteCard from './NoteCard';
 import NoteDetailModal from './NoteDetailModal';
 import AddNoteModal from './AddNoteModal';
-import ProfileSettings from './ProfileSettings';
-import UserManagement from './UserManagement';
-import UserProfileMenu from './UserProfileMenu';
 import LoadingSpinner, { NotesGridSkeleton } from './LoadingSpinner';
 
 const Dashboard: React.FC = () => {
-  const { logout, isAdmin, currentUser } = useAuth();
+  const { isAdmin, currentUser } = useAuth();
   const { isDark } = useTheme();
   const { schema } = useNoteSchema();
   const {
@@ -57,8 +51,6 @@ const Dashboard: React.FC = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
-  const [showProfileSettings, setShowProfileSettings] = useState(false);
-  const [showUserManagement, setShowUserManagement] = useState(false);
 
   // Görünüm durumu
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -179,91 +171,49 @@ const Dashboard: React.FC = () => {
     Object.values(dynamicFilters).some((v) => (v || '').trim() !== '');
   const hasActiveSearch = !!filters.searchQuery;
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (err) {
-      console.error('Çıkış yapılamadı:', err);
-    }
-  };
 
   return (
-    <div className={`min-h-screen transition-colors ${isDark ? 'bg-slate-950' : 'bg-gray-50'}`}>
-      {/* Üst Menü */}
+    <div className={`min-h-screen transition-colors ${isDark ? 'bg-slate-950' : 'bg-gray-100'}`}>
+      {/* Page Header */}
       <header className={`sticky top-0 z-40 border-b transition-colors ${
-        isDark 
-          ? 'bg-slate-850 border-slate-700/50' 
-          : 'bg-white border-gray-200 shadow-sm'
+        isDark
+          ? 'bg-slate-900/95 backdrop-blur-md border-slate-800'
+          : 'bg-white/95 backdrop-blur-md border-gray-200 shadow-sm'
       }`}>
-        <div className="max-w-7xl mx-auto px-4 py-3">
+        <div className="px-5 py-3">
           <div className="flex items-center justify-between">
-            {/* Logo & Başlık */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-safety-orange to-safety-orange-dark rounded-xl flex items-center justify-center">
-                {/* Construction Plan / Map / Parcel Icon */}
-                <svg 
-                  className="w-5 h-5 text-white" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="1.5" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                >
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <line x1="3" y1="9" x2="21" y2="9" />
-                  <line x1="3" y1="15" x2="21" y2="15" />
-                  <line x1="9" y1="3" x2="9" y2="21" />
-                  <line x1="15" y1="9" x2="15" y2="21" />
-                  <circle cx="6" cy="6" r="1.5" fill="currentColor" />
-                </svg>
-              </div>
-              <div className="hidden sm:block">
-                <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>AYT Mühendislik</h1>
+              <FileText className={`w-5 h-5 ${isDark ? 'text-safety-orange' : 'text-safety-orange-dark'}`} />
+              <div>
+                <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Saha Notları</h1>
                 <p className={`text-xs ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>
-                  {isAdmin ? 'Yönetici Paneli' : 'Saha Kayıtları'}
+                  {visibleNotes.length} kayıt
                 </p>
               </div>
             </div>
-
-            {/* Kullanıcı Bilgisi & Aksiyonlar */}
             <div className="flex items-center gap-2">
-              {/* Tablo Görünümü Link - Admin only */}
-              {isAdmin && (
-                <>
-                  <Link
-                    to="/table-view"
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isDark
-                        ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                    }`}
-                    title="Tablo Görünümü"
-                  >
-                    <FileSpreadsheet className="w-5 h-5" />
-                    <span className="hidden sm:inline">Tablo Görünümü</span>
-                  </Link>
-                  <Link
-                    to="/form-builder"
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isDark
-                        ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                    }`}
-                    title="Form Şeması"
-                  >
-                    <Settings2 className="w-5 h-5" />
-                    <span className="hidden sm:inline">Form Şeması</span>
-                  </Link>
-                </>
-              )}
-
-              {/* User Profile Menu */}
-              <UserProfileMenu
-                onOpenProfileSettings={() => setShowProfileSettings(true)}
-                onOpenUserManagement={() => setShowUserManagement(true)}
-                onLogout={handleLogout}
-              />
+              {/* Search toggle */}
+              <button
+                onClick={() => setIsSearchOpen(!isSearchOpen)}
+                className={`p-2 rounded-lg transition-colors ${
+                  hasActiveSearch
+                    ? 'bg-safety-orange/20 text-safety-orange'
+                    : isDark ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50' : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <Search className="w-5 h-5" />
+              </button>
+              {/* Filter toggle */}
+              <button
+                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                className={`p-2 rounded-lg transition-colors ${
+                  hasActiveFilters
+                    ? 'bg-safety-orange/20 text-safety-orange'
+                    : isDark ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50' : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <SlidersHorizontal className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
@@ -753,19 +703,6 @@ const Dashboard: React.FC = () => {
         canEdit={selectedNote ? canEditNote(selectedNote) : false}
       />
 
-      {/* Profil Ayarları Modal */}
-      <ProfileSettings
-        isOpen={showProfileSettings}
-        onClose={() => setShowProfileSettings(false)}
-      />
-
-      {/* Kullanıcı Yönetimi Modal (Sadece Admin) */}
-      {isAdmin && (
-        <UserManagement
-          isOpen={showUserManagement}
-          onClose={() => setShowUserManagement(false)}
-        />
-      )}
     </div>
   );
 };
