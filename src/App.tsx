@@ -5,6 +5,7 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import TablePage from './pages/TablePage';
 import FormBuilder from './pages/admin/FormBuilder';
+import WeeklyPlan from './pages/WeeklyPlan';
 import LoadingSpinner from './components/LoadingSpinner';
 import ChangePasswordModal from './components/ChangePasswordModal';
 import { CheckCircle2 } from 'lucide-react';
@@ -68,6 +69,7 @@ const App: React.FC = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/table-view" element={<AdminTableRoute />} />
         <Route path="/form-builder" element={<AdminFormBuilderRoute />} />
+        <Route path="/weekly-plan" element={<WeeklyPlan />} />
       </Routes>
       {/* Toast: Şifre değiştirildi */}
       {showPasswordChangeToast && (

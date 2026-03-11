@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface UserProfileMenuProps {
   onOpenProfileSettings: () => void;
@@ -26,6 +27,7 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
   const { userProfile, isAdmin } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -114,6 +116,19 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
               <span>Kullanıcı ve Yetki Yönetimi</span>
             </button>
           )}
+
+          {/* Weekly Plan (all roles) */}
+          <button
+            onClick={() => handleItemClick(() => navigate('/weekly-plan'))}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
+              isDark 
+                ? 'text-white hover:bg-slate-700' 
+                : 'text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            <span>Haftalık İş Planı</span>
+          </button>
 
           {/* Theme Toggle */}
           <button

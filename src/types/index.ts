@@ -238,3 +238,48 @@ export interface Comment {
   createdAt: Timestamp | Date | string | number | null;
 }
 
+// --- Weekly Work Plan & Tracking ---
+
+export type TaskStatus = 'Bekliyor' | 'Devam Ediyor' | 'Tamamlandı';
+
+// Tailwind utility classes for category color coding
+export type TaskCategoryColor =
+  | 'bg-blue-100 text-blue-800'
+  | 'bg-green-100 text-green-800'
+  | 'bg-yellow-100 text-yellow-800'
+  | 'bg-red-100 text-red-800'
+  | 'bg-purple-100 text-purple-800';
+
+export interface WeeklyTask {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  /** ISO week string, e.g. "2026-W08" */
+  weekString: string;
+  color: TaskCategoryColor;
+  /** User identifier or display name, depending on usage */
+  assignedTo: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export type TaskMessageType = 'comment' | 'system_log';
+
+export interface TaskThreadMessage {
+  id: string;
+  taskId: string;
+  authorId: string;
+  authorName: string;
+  content: string;
+  createdAt: Timestamp;
+  messageType: TaskMessageType;
+  /** Image attachments stored in Firebase Storage */
+  imageUrls?: string[];
+  /** ID of the message being replied to */
+  replyToId?: string | null;
+  /** Short preview of the quoted message content */
+  replyToSnippet?: string | null;
+}
+
