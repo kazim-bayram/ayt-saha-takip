@@ -87,7 +87,8 @@ const COLOR_OPTIONS: { value: TaskCategoryColor; label: string; swatch: string }
   { value: 'bg-purple-100 text-purple-800', label: 'Mor', swatch: 'bg-purple-500' }
 ];
 
-function colorToBorder(c: TaskCategoryColor): string {
+function colorToBorder(c: TaskCategoryColor | undefined | null): string {
+  if (!c) return 'border-l-gray-400';
   if (c.includes('blue')) return 'border-l-blue-500';
   if (c.includes('green')) return 'border-l-green-500';
   if (c.includes('yellow')) return 'border-l-yellow-500';
@@ -124,7 +125,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, isDark, onStatusChange, onDra
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const otherStatuses = STATUSES.filter((s) => s !== task.status);
+  const otherStatuses = STATUSES.filter((s) => s !== task?.status);
 
   return (
     <div
@@ -146,8 +147,8 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, isDark, onStatusChange, onDra
       )}
 
       <div className="flex items-center gap-1.5 flex-wrap">
-        <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded ${task.color}`}>
-          {task.projectId || 'Proje'}
+        <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded ${task?.color ?? 'bg-gray-100 text-gray-800'}`}>
+          {task?.projectId || 'Proje'}
         </span>
         {/* Type badge */}
         {isNote ? (
@@ -162,12 +163,12 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, isDark, onStatusChange, onDra
       </div>
 
       <h4 className={`mt-1.5 text-sm font-semibold leading-snug line-clamp-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-        {task.title}
+        {task?.title ?? 'İsimsiz Görev'}
       </h4>
 
       <div className={`mt-2 flex items-center gap-1.5 text-xs ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>
         <User className="w-3 h-3" />
-        <span className="truncate">{task.assignedTo || '–'}</span>
+        <span className="truncate">{task?.assignedTo || '–'}</span>
       </div>
 
       {!isNote && (
@@ -181,7 +182,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, isDark, onStatusChange, onDra
               isDark ? 'bg-slate-700 text-concrete-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            {task.status}
+            {task?.status ?? 'Bekliyor'}
             <ChevronDown className="w-3 h-3" />
           </button>
           {menuOpen && (

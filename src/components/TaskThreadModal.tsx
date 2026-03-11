@@ -286,22 +286,24 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
   const feedEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const taskId = task?.id ?? null;
+
   const loadMessages = useCallback(async () => {
-    if (!task) return;
+    if (!taskId) return;
     setLoadingMsgs(true);
     try {
-      const data = await getTaskMessages(task.id);
+      const data = await getTaskMessages(taskId);
       setMessages(data);
     } catch { /* silently handled */ } finally { setLoadingMsgs(false); }
-  }, [task, getTaskMessages]);
+  }, [taskId, getTaskMessages]);
 
   useEffect(() => {
-    if (isOpen && task) {
+    if (isOpen && taskId) {
       loadMessages();
       setMsgText(''); setPendingFiles([]); setReplyTo(null); setSendError(null);
       setIsRFIMode(false); setRfiDeadline('');
     }
-  }, [isOpen, task, loadMessages]);
+  }, [isOpen, taskId, loadMessages]);
 
   useEffect(() => { feedEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
@@ -350,8 +352,8 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
   };
 
   if (!isOpen || !task) return null;
-  const statusBadge = STATUS_BADGE[task.status];
-  const rfiCount = messages.filter(m => m.isRFI).length;
+  const statusBadge = STATUS_BADGE[task.status] ?? STATUS_BADGE['Bekliyor'];
+  const rfiCount = (messages || []).filter(m => m.isRFI).length;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end animate-fade-in"
@@ -363,14 +365,14 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
         <div className={`flex-shrink-0 px-5 py-4 border-b ${isDark ? 'border-slate-700/50' : 'border-gray-200'}`}>
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <h2 className={`text-lg font-bold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{task.title}</h2>
+              <h2 className={`text-lg font-bold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{task?.title ?? 'Görev'}</h2>
               <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                <span className={`inline-flex text-xs font-medium px-2 py-0.5 rounded-full ${isDark ? statusBadge.bg : statusBadge.bgLight}`}>{task.status}</span>
-                {task.assignedTo && (
+                <span className={`inline-flex text-xs font-medium px-2 py-0.5 rounded-full ${isDark ? statusBadge.bg : statusBadge.bgLight}`}>{task?.status ?? 'Bekliyor'}</span>
+                {task?.assignedTo && (
                   <span className={`flex items-center gap-1 text-xs ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}><User className="w-3 h-3" />{task.assignedTo}</span>
                 )}
-                {task.projectId && (
-                  <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${task.color}`}>{task.projectId}</span>
+                {task?.projectId && (
+                  <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${task?.color ?? ''}`}>{task.projectId}</span>
                 )}
                 {rfiCount > 0 && (
                   <span className="flex items-center gap-1 text-xs text-rfi-text bg-rfi-bg/30 px-1.5 py-0.5 rounded">
@@ -378,13 +380,13 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
                   </span>
                 )}
               </div>
-              {task.description && (
+              {task?.description && (
                 <p className={`text-xs mt-2 line-clamp-2 ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>{task.description}</p>
               )}
               <div className="flex gap-1.5 mt-3 flex-wrap items-center">
                 <label className={`text-xs font-medium ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>Durum:</label>
                 <select
-                  value={task.status}
+                  value={task?.status ?? 'Bekliyor'}
                   onChange={(e) => handleStatusChange(e.target.value as TaskStatus)}
                   disabled={statusUpdating}
                   className={`text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors focus:outline-none focus:ring-1 focus:ring-safety-orange/50 ${
@@ -420,7 +422,7 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
                   </button>
                 )}
                 <button
-                  onClick={() => generateThreadPDF(task, messages)}
+                  onClick={() => { try { generateThreadPDF(task, messages || []); } catch { /* safe */ } }}
                   className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors ${isDark ? 'bg-slate-800 text-concrete-300 hover:bg-slate-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 >
                   <FileDown className="w-3 h-3" /> PDF Rapor
@@ -440,12 +442,12 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
               <Loader2 className={`w-5 h-5 animate-spin ${isDark ? 'text-concrete-400' : 'text-gray-400'}`} />
               <span className={`text-sm ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>Mesajlar yükleniyor…</span>
             </div>
-          ) : messages.length === 0 ? (
+          ) : (messages || []).length === 0 ? (
             <p className={`text-center text-sm py-16 ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>
               Henüz mesaj veya aktivite yok. İlk mesajı siz gönderin.
             </p>
           ) : (
-            messages.map(msg =>
+            (messages || []).map(msg =>
               msg.messageType === 'system_log' ? (
                 <SystemLogEntry key={msg.id} msg={msg} isDark={isDark} />
               ) : (
