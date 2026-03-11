@@ -26,9 +26,13 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 import { useWeeklyPlan, CreateTaskInput } from '../hooks/useWeeklyPlan';
 import { useProjectAnalytics } from '../hooks/useProjectAnalytics';
-import { WeeklyTask, TaskStatus, TaskCategoryColor, Note, TimelineItem } from '../types';
+import {
+  WeeklyTask, TaskStatus, TaskCategoryColor, Note, NoteFormData,
+  TimelineItem,
+} from '../types';
 import TaskThreadModal from '../components/TaskThreadModal';
 import AddNoteModal from '../components/AddNoteModal';
+import NoteDetailModal from '../components/NoteDetailModal';
 import { useNotes } from '../hooks/useNotes';
 import MonthlyView from '../components/MonthlyView';
 import TimelineView from '../components/TimelineView';
@@ -69,6 +73,12 @@ function formatWeekRange(ws: string): string {
   const fmt = (d: Date) =>
     `${String(d.getUTCDate()).padStart(2, '0')}.${String(d.getUTCMonth() + 1).padStart(2, '0')}.${d.getUTCFullYear()}`;
   return `${fmt(monday)} – ${fmt(sunday)}`;
+}
+
+/** Map a note's status to a Kanban column */
+function mapNoteToKanbanStatus(noteStatus: string): TaskStatus {
+  if (noteStatus === 'Onay') return 'Tamamlandı';
+  return 'Devam Ediyor'; // 'Eksik' = needs attention → Devam Ediyor
 }
 
 // ---------------------------------------------------------------------------
@@ -126,11 +136,11 @@ interface TaskCardProps {
   isDark: boolean;
   onStatusChange: (taskId: string, status: TaskStatus) => void;
   onDragStart: (e: DragEvent<HTMLDivElement>, task: WeeklyTask) => void;
-  onOpenThread: (task: WeeklyTask) => void;
+  onClick: () => void;
   isNote?: boolean;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, isDark, onStatusChange, onDragStart, onOpenThread, isNote }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ task, isDark, onStatusChange, onDragStart, onClick, isNote }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -148,12 +158,12 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, isDark, onStatusChange, onDra
     <div
       draggable={!isNote}
       onDragStart={(e) => !isNote && onDragStart(e, task)}
-      onClick={() => onOpenThread(task)}
+      onClick={onClick}
       className={`group relative border-l-4 ${colorToBorder(task.color)} rounded-lg p-3 cursor-pointer transition-shadow hover:shadow-md ${
         isDark
           ? 'bg-slate-800 hover:bg-slate-750 shadow-sm shadow-black/20'
           : 'bg-white hover:bg-gray-50 shadow-sm'
-      } ${isNote ? 'opacity-80' : 'cursor-grab active:cursor-grabbing'}`}
+      } ${isNote ? 'opacity-90' : 'cursor-grab active:cursor-grabbing'}`}
     >
       {!isNote && (
         <GripVertical
@@ -163,13 +173,18 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, isDark, onStatusChange, onDra
         />
       )}
 
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 flex-wrap">
         <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded ${task.color}`}>
           {task.projectId || 'Proje'}
         </span>
-        {isNote && (
-          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${isDark ? 'bg-purple-500/20 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>
-            Saha Notu
+        {/* Type badge */}
+        {isNote ? (
+          <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${isDark ? 'bg-purple-500/20 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>
+            Kayıt
+          </span>
+        ) : (
+          <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${isDark ? 'bg-cyan-500/20 text-cyan-300' : 'bg-cyan-100 text-cyan-700'}`}>
+            Plan
           </span>
         )}
       </div>
@@ -221,6 +236,18 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, isDark, onStatusChange, onDra
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {isNote && (
+        <div className="mt-2">
+          <span className={`text-[11px] font-medium px-2 py-1 rounded-md ${
+            task.status === 'Tamamlandı'
+              ? isDark ? 'bg-green-500/20 text-green-300' : 'bg-green-100 text-green-700'
+              : isDark ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-700'
+          }`}>
+            {task.status === 'Tamamlandı' ? 'Onay' : 'Eksik'}
+          </span>
         </div>
       )}
     </div>
@@ -362,23 +389,22 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSubmit, 
 
 interface KanbanColumnProps {
   status: TaskStatus;
-  tasks: WeeklyTask[];
+  cards: { task: WeeklyTask; isNote: boolean; noteRef?: Note }[];
   isDark: boolean;
   onStatusChange: (taskId: string, status: TaskStatus) => void;
   onDragStart: (e: DragEvent<HTMLDivElement>, task: WeeklyTask) => void;
   onDragOver: (e: DragEvent<HTMLDivElement>) => void;
   onDrop: (e: DragEvent<HTMLDivElement>, targetStatus: TaskStatus) => void;
   dragOverStatus: TaskStatus | null;
-  onOpenThread: (task: WeeklyTask) => void;
-  noteCards?: WeeklyTask[];
+  onTaskClick: (task: WeeklyTask) => void;
+  onNoteClick: (note: Note) => void;
 }
 
 const KanbanColumn: React.FC<KanbanColumnProps> = ({
-  status, tasks, isDark, onStatusChange, onDragStart, onDragOver, onDrop, dragOverStatus, onOpenThread, noteCards
+  status, cards, isDark, onStatusChange, onDragStart, onDragOver, onDrop, dragOverStatus, onTaskClick, onNoteClick
 }) => {
   const meta = STATUS_META[status];
   const isOver = dragOverStatus === status;
-  const allCards = [...tasks, ...(noteCards || [])];
 
   return (
     <div
@@ -393,27 +419,24 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
       <div className={`flex items-center justify-between px-4 py-3 rounded-t-xl ${isDark ? meta.headerBg : meta.headerBgLight}`}>
         <span className="text-sm font-semibold">{meta.label}</span>
         <span className={`text-xs font-mono px-2 py-0.5 rounded-full ${isDark ? 'bg-white/10' : 'bg-black/10'}`}>
-          {allCards.length}
+          {cards.length}
         </span>
       </div>
       <div className="flex-1 p-3 space-y-2.5 overflow-y-auto max-h-[calc(100vh-340px)]">
-        {allCards.length === 0 ? (
+        {cards.length === 0 ? (
           <p className={`text-xs text-center py-8 ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>{meta.emptyText}</p>
         ) : (
-          allCards.map((task) => {
-            const isNoteItem = task.id.startsWith?.('note-');
-            return (
-              <TaskCard
-                key={task.id}
-                task={task}
-                isDark={isDark}
-                onStatusChange={onStatusChange}
-                onDragStart={onDragStart}
-                onOpenThread={onOpenThread}
-                isNote={isNoteItem}
-              />
-            );
-          })
+          cards.map(({ task, isNote, noteRef }) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              isDark={isDark}
+              onStatusChange={onStatusChange}
+              onDragStart={onDragStart}
+              onClick={() => isNote && noteRef ? onNoteClick(noteRef) : onTaskClick(task)}
+              isNote={isNote}
+            />
+          ))
         )}
       </div>
     </div>
@@ -429,12 +452,10 @@ const AnalyticsMiniDashboard: React.FC<{ tasks: WeeklyTask[]; notes: Note[]; isD
 
   const spiColor = analytics.spiValue >= 1 ? 'text-green-400' : analytics.spiValue >= 0.8 ? 'text-yellow-400' : 'text-red-400';
   const spiBg = analytics.spiValue >= 1 ? 'bg-green-500/10 border-green-500/20' : analytics.spiValue >= 0.8 ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-red-500/10 border-red-500/20';
-
   const cardClass = `rounded-xl border p-4 ${isDark ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-200'}`;
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-      {/* SPI */}
       <div className={`rounded-xl border p-4 ${isDark ? spiBg : 'bg-white border-gray-200'}`}>
         <div className="flex items-center gap-2 mb-1">
           <TrendingUp className={`w-4 h-4 ${spiColor}`} />
@@ -443,8 +464,6 @@ const AnalyticsMiniDashboard: React.FC<{ tasks: WeeklyTask[]; notes: Note[]; isD
         <p className={`text-2xl font-bold ${spiColor}`}>{analytics.spiValue.toFixed(2)}</p>
         <p className={`text-xs ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>{analytics.spiLabel}</p>
       </div>
-
-      {/* Tasks */}
       <div className={cardClass}>
         <div className="flex items-center gap-2 mb-1">
           <BarChart3 className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
@@ -459,8 +478,6 @@ const AnalyticsMiniDashboard: React.FC<{ tasks: WeeklyTask[]; notes: Note[]; isD
           <span className="text-[10px] text-blue-400">{analytics.inProgressTasks} devam</span>
         </div>
       </div>
-
-      {/* Hours */}
       <div className={cardClass}>
         <div className="flex items-center gap-2 mb-1">
           <Clock className={`w-4 h-4 ${isDark ? 'text-purple-400' : 'text-purple-600'}`} />
@@ -469,8 +486,6 @@ const AnalyticsMiniDashboard: React.FC<{ tasks: WeeklyTask[]; notes: Note[]; isD
         <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{analytics.totalActualHours}h</p>
         <p className={`text-xs ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>/ {analytics.totalPlannedHours}h planlı</p>
       </div>
-
-      {/* Costs */}
       <div className={cardClass}>
         <div className="flex items-center gap-2 mb-1">
           <DollarSign className={`w-4 h-4 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
@@ -483,8 +498,6 @@ const AnalyticsMiniDashboard: React.FC<{ tasks: WeeklyTask[]; notes: Note[]; isD
           Saha: {analytics.noteStats.total} not ({analytics.noteStats.onay} onaylı)
         </p>
       </div>
-
-      {/* Bottleneck workers banner */}
       {analytics.bottleneckWorkers.length > 0 && (
         <div className={`col-span-full rounded-xl border p-3 flex items-center gap-3 ${isDark ? 'bg-red-500/10 border-red-500/20' : 'bg-red-50 border-red-200'}`}>
           <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
@@ -506,23 +519,29 @@ const AnalyticsMiniDashboard: React.FC<{ tasks: WeeklyTask[]; notes: Note[]; isD
 
 const ProjectConsole: React.FC = () => {
   const { isDark } = useTheme();
+  const { getTasksByWeek, getAllTasks, createTask, updateTaskStatus } = useWeeklyPlan();
   const {
-    loading, error, getTasksByWeek, getAllTasks, getNotes: getTimelineNotes,
-    createTask, updateTaskStatus
-  } = useWeeklyPlan();
-  const { notes: liveNotes, createNote, uploadProgress } = useNotes();
+    notes: liveNotes, createNote, updateNote, uploadProgress,
+    addComment, deleteComment, canEditNote,
+  } = useNotes();
+
+  // Local loading/error state to avoid hook's shared loading race
+  const [pageLoading, setPageLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const [currentWeek, setCurrentWeek] = useState(() => getISOWeekString(new Date()));
   const [tasks, setTasks] = useState<WeeklyTask[]>([]);
   const [allTasks, setAllTasks] = useState<WeeklyTask[]>([]);
-  const [allNotes, setAllNotes] = useState<Note[]>([]);
   const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAddNoteModal, setShowAddNoteModal] = useState(false);
   const [threadTask, setThreadTask] = useState<WeeklyTask | null>(null);
-  const [fetchError, setFetchError] = useState<string | null>(null);
   const [showAddMenu, setShowAddMenu] = useState(false);
+
+  // Note detail/edit modals
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
 
   // Monthly calendar state
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
@@ -531,7 +550,6 @@ const ProjectConsole: React.FC = () => {
   const draggedTaskRef = useRef<WeeklyTask | null>(null);
   const addMenuRef = useRef<HTMLDivElement>(null);
 
-  // Close add menu on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) setShowAddMenu(false);
@@ -540,54 +558,58 @@ const ProjectConsole: React.FC = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Fetch tasks based on view mode
+  // Fetch tasks - managed with local loading state to avoid race
   const fetchTasks = useCallback(async () => {
+    setPageLoading(true);
     setFetchError(null);
     try {
-      if (viewMode === 'kanban') {
-        const data = await getTasksByWeek(currentWeek);
-        setTasks(data);
-      }
-      const all = await getAllTasks();
+      const [weekTasks, all] = await Promise.all([
+        getTasksByWeek(currentWeek),
+        getAllTasks(),
+      ]);
+      setTasks(weekTasks);
       setAllTasks(all);
-      const notes = await getTimelineNotes();
-      setAllNotes(notes);
-    } catch (err) {
+    } catch {
       setFetchError('Veriler yüklenirken bir hata oluştu.');
+    } finally {
+      setPageLoading(false);
     }
-  }, [currentWeek, viewMode, getTasksByWeek, getAllTasks, getTimelineNotes]);
+  }, [currentWeek, getTasksByWeek, getAllTasks]);
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
 
-  // Keep notes synced from real-time hook
-  useEffect(() => {
-    if (liveNotes.length > 0) setAllNotes(liveNotes);
-  }, [liveNotes]);
+  // Use liveNotes from useNotes (respects role-based Firestore rules)
+  const allNotes = liveNotes;
 
-  // Kanban columns (tasks + notes mapped to statuses)
-  const columns = useMemo(() => {
-    const map: Record<TaskStatus, WeeklyTask[]> = { 'Bekliyor': [], 'Devam Ediyor': [], 'Tamamlandı': [] };
-    tasks.forEach((t) => { if (map[t.status]) map[t.status].push(t); else map['Bekliyor'].push(t); });
-    return map;
-  }, [tasks]);
+  // Build unified Kanban cards: tasks + notes for current week
+  const kanbanCards = useMemo(() => {
+    type CardEntry = { task: WeeklyTask; isNote: boolean; noteRef?: Note };
+    const map: Record<TaskStatus, CardEntry[]> = { 'Bekliyor': [], 'Devam Ediyor': [], 'Tamamlandı': [] };
 
-  // Map notes into task-like cards for Kanban display
-  const noteColumns = useMemo(() => {
-    const map: Record<TaskStatus, WeeklyTask[]> = { 'Bekliyor': [], 'Devam Ediyor': [], 'Tamamlandı': [] };
-    // Filter notes for current week
+    // Add real tasks
+    tasks.forEach((t) => {
+      const col = map[t.status] ? t.status : 'Bekliyor';
+      map[col].push({ task: t, isNote: false });
+    });
+
+    // Add notes mapped into the week range
     const monday = weekStringToMonday(currentWeek);
-    const sunday = new Date(monday);
-    sunday.setUTCDate(monday.getUTCDate() + 6);
+    const sundayEnd = new Date(monday);
+    sundayEnd.setUTCDate(monday.getUTCDate() + 7); // exclusive upper bound
+    const mondayMs = monday.getTime();
+    const sundayMs = sundayEnd.getTime();
 
     allNotes.forEach(note => {
       const created = note.createdAt?.toDate?.();
       if (!created) return;
-      if (created >= monday && created <= sunday) {
-        const status: TaskStatus = note.status === 'Onay' ? 'Tamamlandı' : 'Bekliyor';
+      // Normalize to UTC date for comparison
+      const noteUtc = Date.UTC(created.getFullYear(), created.getMonth(), created.getDate());
+      if (noteUtc >= mondayMs && noteUtc < sundayMs) {
+        const status = mapNoteToKanbanStatus(note.status);
         const fakeTask: WeeklyTask = {
           id: `note-${note.id}`,
           projectId: note.projectName,
-          title: note.content?.slice(0, 80) || note.projectName,
+          title: note.projectName || note.content?.slice(0, 60) || 'Saha Notu',
           description: note.content || '',
           status,
           weekString: currentWeek,
@@ -596,11 +618,12 @@ const ProjectConsole: React.FC = () => {
           createdAt: note.createdAt,
           updatedAt: note.updatedAt || note.createdAt,
         };
-        map[status].push(fakeTask);
+        map[status].push({ task: fakeTask, isNote: true, noteRef: note });
       }
     });
+
     return map;
-  }, [allNotes, currentWeek]);
+  }, [tasks, allNotes, currentWeek]);
 
   const handleStatusChange = useCallback(
     async (taskId: string, newStatus: TaskStatus) => {
@@ -624,10 +647,43 @@ const ProjectConsole: React.FC = () => {
     draggedTaskRef.current = null;
   }, [handleStatusChange]);
 
-  const handleCreateTask = useCallback(async (data: CreateTaskInput) => { await createTask(data); await fetchTasks(); }, [createTask, fetchTasks]);
+  const handleCreateTask = useCallback(async (data: CreateTaskInput) => {
+    await createTask(data);
+    await fetchTasks();
+  }, [createTask, fetchTasks]);
 
   const handleTimelineItemClick = useCallback((item: TimelineItem) => {
     if (item.taskRef) setThreadTask(item.taskRef);
+  }, []);
+
+  // Note modal handlers
+  const handleNoteClick = useCallback((note: Note) => {
+    setSelectedNote(note);
+  }, []);
+
+  const handleEditNote = useCallback((note: Note) => {
+    setSelectedNote(null);
+    setEditingNote(note);
+    setShowAddNoteModal(true);
+  }, []);
+
+  const handleSubmitNote = useCallback(async (formData: NoteFormData, existingImageUrls?: string[]) => {
+    if (editingNote) {
+      await updateNote(
+        editingNote.id,
+        formData,
+        formData.images.length > 0 ? formData.images : undefined,
+        existingImageUrls,
+      );
+      setEditingNote(null);
+    } else {
+      await createNote(formData);
+    }
+  }, [editingNote, updateNote, createNote]);
+
+  const handleAddNoteModalClose = useCallback(() => {
+    setShowAddNoteModal(false);
+    setEditingNote(null);
   }, []);
 
   const VIEW_OPTIONS: { key: ViewMode; icon: React.ElementType; label: string }[] = [
@@ -636,15 +692,12 @@ const ProjectConsole: React.FC = () => {
     { key: 'timeline', icon: GanttChart, label: 'Zaman Çizelgesi' },
   ];
 
-  const displayError = fetchError || error;
-
   return (
     <div className={`min-h-screen transition-colors ${isDark ? 'bg-slate-950' : 'bg-gray-100'}`}>
       {/* Header */}
       <header className={`sticky top-0 z-40 border-b transition-colors ${isDark ? 'bg-slate-900/95 backdrop-blur-md border-slate-800' : 'bg-white/95 backdrop-blur-md border-gray-200 shadow-sm'}`}>
         <div className="px-5 py-3">
           <div className="flex items-center justify-between">
-            {/* Left: title + stats */}
             <div className="flex items-center gap-3">
               <Calendar className={`w-5 h-5 ${isDark ? 'text-safety-orange' : 'text-safety-orange-dark'}`} />
               <div>
@@ -655,7 +708,6 @@ const ProjectConsole: React.FC = () => {
               </div>
             </div>
 
-            {/* Center: view toggle */}
             <div className={`flex items-center rounded-lg p-1 ${isDark ? 'bg-slate-800' : 'bg-gray-100'}`}>
               {VIEW_OPTIONS.map(opt => {
                 const Icon = opt.icon;
@@ -677,7 +729,6 @@ const ProjectConsole: React.FC = () => {
               })}
             </div>
 
-            {/* Right: week nav (kanban only) + add + refresh */}
             <div className="flex items-center gap-2">
               {viewMode === 'kanban' && (
                 <div className="flex items-center gap-1">
@@ -693,7 +744,6 @@ const ProjectConsole: React.FC = () => {
                 </div>
               )}
 
-              {/* Unified add button */}
               <div ref={addMenuRef} className="relative">
                 <button
                   onClick={() => setShowAddMenu(p => !p)}
@@ -712,7 +762,7 @@ const ProjectConsole: React.FC = () => {
                       Yeni Görev
                     </button>
                     <button
-                      onClick={() => { setShowAddMenu(false); setShowAddNoteModal(true); }}
+                      onClick={() => { setShowAddMenu(false); setEditingNote(null); setShowAddNoteModal(true); }}
                       className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm transition-colors ${isDark ? 'text-white hover:bg-slate-700' : 'text-gray-700 hover:bg-gray-100'}`}
                     >
                       <FileText className="w-4 h-4 text-green-400" />
@@ -733,12 +783,11 @@ const ProjectConsole: React.FC = () => {
 
       {/* Body */}
       <div className="px-5 py-5">
-        {/* Error banner with retry */}
-        {displayError && (
+        {fetchError && (
           <div className="mb-4 p-4 rounded-xl flex items-center justify-between bg-red-500/10 border border-red-500/30">
             <div className="flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-              <p className="text-red-300 text-sm">{displayError}</p>
+              <p className="text-red-300 text-sm">{fetchError}</p>
             </div>
             <button
               onClick={fetchTasks}
@@ -750,18 +799,15 @@ const ProjectConsole: React.FC = () => {
           </div>
         )}
 
-        {/* Analytics Dashboard */}
         <AnalyticsMiniDashboard tasks={allTasks} notes={allNotes} isDark={isDark} />
 
-        {/* Loading state */}
-        {loading ? (
+        {pageLoading ? (
           <div className="flex items-center justify-center py-20 gap-3">
             <Loader2 className={`w-6 h-6 animate-spin ${isDark ? 'text-concrete-400' : 'text-gray-400'}`} />
             <span className={`text-sm ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>Görevler yükleniyor…</span>
           </div>
         ) : (
           <>
-            {/* Kanban View */}
             {viewMode === 'kanban' && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {STATUSES.map((status) => (
@@ -772,44 +818,35 @@ const ProjectConsole: React.FC = () => {
                   >
                     <KanbanColumn
                       status={status}
-                      tasks={columns[status]}
-                      noteCards={noteColumns[status]}
+                      cards={kanbanCards[status]}
                       isDark={isDark}
                       onStatusChange={handleStatusChange}
                       onDragStart={handleDragStart}
                       onDragOver={handleDragOver}
                       onDrop={handleDrop}
                       dragOverStatus={dragOverStatus}
-                      onOpenThread={(t) => {
-                        if (t.id.startsWith('note-')) return;
-                        setThreadTask(t);
-                      }}
+                      onTaskClick={setThreadTask}
+                      onNoteClick={handleNoteClick}
                     />
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Monthly View */}
             {viewMode === 'monthly' && (
               <MonthlyView
                 tasks={allTasks}
                 notes={allNotes}
                 year={calYear}
                 month={calMonth}
-                onPrevMonth={() => {
-                  setCalMonth(m => { if (m === 0) { setCalYear(y => y - 1); return 11; } return m - 1; });
-                }}
-                onNextMonth={() => {
-                  setCalMonth(m => { if (m === 11) { setCalYear(y => y + 1); return 0; } return m + 1; });
-                }}
+                onPrevMonth={() => { setCalMonth(m => { if (m === 0) { setCalYear(y => y - 1); return 11; } return m - 1; }); }}
+                onNextMonth={() => { setCalMonth(m => { if (m === 11) { setCalYear(y => y + 1); return 0; } return m + 1; }); }}
                 onToday={() => { setCalMonth(new Date().getMonth()); setCalYear(new Date().getFullYear()); }}
                 isDark={isDark}
                 onItemClick={handleTimelineItemClick}
               />
             )}
 
-            {/* Timeline (Gantt) View */}
             {viewMode === 'timeline' && (
               <TimelineView
                 tasks={allTasks}
@@ -822,22 +859,28 @@ const ProjectConsole: React.FC = () => {
       </div>
 
       {/* Modals */}
-      <AddTaskModal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onSubmit={handleCreateTask}
-        weekString={currentWeek}
-        isDark={isDark}
-      />
+      <AddTaskModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreateTask} weekString={currentWeek} isDark={isDark} />
+
       <AddNoteModal
         isOpen={showAddNoteModal}
-        onClose={() => setShowAddNoteModal(false)}
-        onSubmit={async (data) => {
-          await createNote(data);
-          await fetchTasks();
-        }}
+        onClose={handleAddNoteModalClose}
+        onSubmit={handleSubmitNote}
+        editNote={editingNote}
         uploadProgress={uploadProgress}
       />
+
+      {selectedNote && (
+        <NoteDetailModal
+          note={selectedNote}
+          isOpen={!!selectedNote}
+          onClose={() => setSelectedNote(null)}
+          onAddComment={addComment}
+          onDeleteComment={deleteComment}
+          onEdit={handleEditNote}
+          canEdit={canEditNote(selectedNote)}
+        />
+      )}
+
       <TaskThreadModal
         task={threadTask}
         isOpen={!!threadTask}

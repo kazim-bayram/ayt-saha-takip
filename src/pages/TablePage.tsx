@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import {
   ChevronDown,
@@ -6,511 +6,433 @@ import {
   Download,
   Pencil,
   Trash2,
-  ArrowLeft,
   FileSpreadsheet,
-  Settings2
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
 import { useNotes } from '../hooks/useNotes';
 import { useNoteSchema } from '../hooks/useNoteSchema';
-import { Note, NoteFormData, normalizeStatus, NOTE_STATUS_CONFIG, getWorkDate, formatWorkDate, getNoteFieldValue } from '../types';
+import { useWeeklyPlan } from '../hooks/useWeeklyPlan';
+import {
+  Note, NoteFormData, WeeklyTask, normalizeStatus, NOTE_STATUS_CONFIG,
+  getWorkDate, formatWorkDate, getNoteFieldValue,
+} from '../types';
 import AddNoteModal from '../components/AddNoteModal';
 import NoteDetailModal from '../components/NoteDetailModal';
-import UserProfileMenu from '../components/UserProfileMenu';
-import ProfileSettings from '../components/ProfileSettings';
-import UserManagement from '../components/UserManagement';
+import TaskThreadModal from '../components/TaskThreadModal';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const CORE_FIELD_IDS = ['category', 'ada', 'parsel', 'date', 'progressLevel'] as const;
 
-type SortField = 'projectName' | 'date' | 'category' | null;
+type RowType = 'note' | 'task';
+
+interface UnifiedRow {
+  type: RowType;
+  id: string;
+  projectName: string;
+  responsible: string;
+  statusLabel: string;
+  statusColor: 'green' | 'red' | 'yellow' | 'blue';
+  dateStr: string;
+  description: string;
+  note?: Note;
+  task?: WeeklyTask;
+}
+
+type SortField = 'projectName' | 'date' | 'type' | 'responsible' | null;
 type SortDir = 'asc' | 'desc';
 
 const TablePage: React.FC = () => {
   const { isDark } = useTheme();
-  const { logout, isAdmin } = useAuth();
   const { schema } = useNoteSchema();
   const schemaFields = [...schema.fields].sort((a, b) => a.order - b.order);
-  // Columns: core (category, ada, parsel, date, progressLevel) + any field with showInTable
   const tableDisplayFields = useMemo(
-    () =>
-      schemaFields.filter(
-        (f) => CORE_FIELD_IDS.includes(f.id as (typeof CORE_FIELD_IDS)[number]) || f.showInTable
-      ),
+    () => schemaFields.filter(
+      (f) => CORE_FIELD_IDS.includes(f.id as (typeof CORE_FIELD_IDS)[number]) || f.showInTable
+    ),
     [schemaFields]
   );
+
   const {
-    notes,
-    loading,
-    error,
-    updateNote,
-    deleteNote,
-    addComment,
-    deleteComment,
-    canEditNote,
-    canDeleteNote
+    notes, loading: notesLoading, error: notesError,
+    updateNote, deleteNote, addComment, deleteComment, canEditNote, canDeleteNote,
   } = useNotes();
+
+  const { getAllTasks } = useWeeklyPlan();
+  const [tasks, setTasks] = useState<WeeklyTask[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      setTasksLoading(true);
+      try { setTasks(await getAllTasks()); } catch { /* handled */ }
+      finally { setTasksLoading(false); }
+    })();
+  }, [getAllTasks]);
 
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [filterDate, setFilterDate] = useState<string>('');
   const [filters, setFilters] = useState({
     project: '',
-    adaParsel: '',
-    category: '',
-    progress: '',
-    status: ''
+    responsible: '',
+    status: '',
+    type: '' as '' | 'note' | 'task',
   });
+  const [filterDate, setFilterDate] = useState('');
   const [dynamicFilters, setDynamicFilters] = useState<Record<string, string>>({});
+
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showProfileSettings, setShowProfileSettings] = useState(false);
-  const [showUserManagement, setShowUserManagement] = useState(false);
+  const [threadTask, setThreadTask] = useState<WeeklyTask | null>(null);
 
-  // Apply column filters (core + dynamic, AND logic, case-insensitive)
-  const filteredNotes = useMemo(() => {
-    return notes.filter((note) => {
-      const projectMatch = !filters.project || (note.projectName || '').toLowerCase().includes(filters.project.toLowerCase());
-      const adaParselStr = `${getNoteFieldValue(note, 'ada') || ''}/${getNoteFieldValue(note, 'parsel') || ''}`.toLowerCase();
-      const adaParselMatch = !filters.adaParsel || adaParselStr.includes(filters.adaParsel.toLowerCase());
-      const categoryVal = String(getNoteFieldValue(note, 'category') || '');
-      const categoryMatch = !filters.category || categoryVal.toLowerCase().includes(filters.category.toLowerCase());
-      const progressVal = String(getNoteFieldValue(note, 'progressLevel') || '');
-      const progressMatch = !filters.progress || progressVal.toLowerCase().includes(filters.progress.toLowerCase());
-      const noteStatus = normalizeStatus(note.status);
-      const statusMatch = !filters.status || noteStatus === filters.status;
-      const dateMatch = !filterDate || getWorkDate(note) === filterDate;
-      let dynamicMatch = true;
-      tableDisplayFields.forEach((f) => {
-        if (!f.showInTable || !f.showInFilter) return;
-        const filterVal = dynamicFilters[f.id]?.trim();
-        if (!filterVal) return;
-        const cellVal = getNoteFieldValue(note, f.id);
-        const str = cellVal !== undefined && cellVal !== null
-          ? (Array.isArray(cellVal) ? cellVal.join(' ') : String(cellVal))
-          : '';
-        if (!str.toLowerCase().includes(filterVal.toLowerCase())) dynamicMatch = false;
-      });
-      return projectMatch && adaParselMatch && categoryMatch && progressMatch && statusMatch && dateMatch && dynamicMatch;
+  // Build unified rows
+  const allRows: UnifiedRow[] = useMemo(() => {
+    const noteRows: UnifiedRow[] = notes.map(note => {
+      const status = normalizeStatus(note.status);
+      return {
+        type: 'note' as RowType,
+        id: note.id,
+        projectName: note.projectName || '',
+        responsible: note.userName || note.userEmail || '',
+        statusLabel: NOTE_STATUS_CONFIG[status]?.label || 'Eksik',
+        statusColor: status === 'Onay' ? 'green' : 'red',
+        dateStr: getWorkDate(note),
+        description: note.content || '',
+        note,
+      };
     });
-  }, [notes, filters, filterDate, tableDisplayFields, dynamicFilters]);
 
-  // Sort filtered notes
-  const displayNotes = useMemo(() => {
-    let list = [...filteredNotes];
+    const taskRows: UnifiedRow[] = tasks.map(task => {
+      const created = task.createdAt?.toDate?.();
+      const dateStr = created
+        ? `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}-${String(created.getDate()).padStart(2, '0')}`
+        : '';
+      return {
+        type: 'task' as RowType,
+        id: task.id,
+        projectName: task.projectId || '',
+        responsible: task.assignedTo || '',
+        statusLabel: task.status,
+        statusColor: task.status === 'Tamamlandı' ? 'green' : task.status === 'Devam Ediyor' ? 'blue' : 'yellow',
+        dateStr,
+        description: task.title + (task.description ? ` – ${task.description}` : ''),
+        task,
+      };
+    });
+
+    return [...noteRows, ...taskRows];
+  }, [notes, tasks]);
+
+  const filteredRows = useMemo(() => {
+    return allRows.filter(row => {
+      if (filters.type && row.type !== filters.type) return false;
+      if (filters.project && !row.projectName.toLowerCase().includes(filters.project.toLowerCase())) return false;
+      if (filters.responsible && !row.responsible.toLowerCase().includes(filters.responsible.toLowerCase())) return false;
+      if (filters.status) {
+        if (row.type === 'note') {
+          const noteStatus = normalizeStatus(row.note?.status);
+          if (noteStatus !== filters.status && row.statusLabel !== filters.status) return false;
+        } else {
+          if (row.statusLabel !== filters.status) return false;
+        }
+      }
+      if (filterDate && row.dateStr !== filterDate) return false;
+
+      // Dynamic schema-field filters (only for notes)
+      if (row.note) {
+        for (const f of tableDisplayFields) {
+          if (!f.showInTable || !f.showInFilter) continue;
+          const fv = dynamicFilters[f.id]?.trim();
+          if (!fv) continue;
+          const val = getNoteFieldValue(row.note, f.id);
+          const str = val != null ? (Array.isArray(val) ? val.join(' ') : String(val)) : '';
+          if (!str.toLowerCase().includes(fv.toLowerCase())) return false;
+        }
+      }
+      return true;
+    });
+  }, [allRows, filters, filterDate, tableDisplayFields, dynamicFilters]);
+
+  const displayRows = useMemo(() => {
+    let list = [...filteredRows];
     if (sortField) {
       list.sort((a, b) => {
-        let aVal: string | number = '';
-        let bVal: string | number = '';
-        if (sortField === 'projectName') {
-          aVal = (a.projectName || '').toLowerCase();
-          bVal = (b.projectName || '').toLowerCase();
-        } else if (sortField === 'date') {
-          aVal = getWorkDate(a) || '';
-          bVal = getWorkDate(b) || '';
-        } else if (sortField === 'category') {
-          aVal = (a.category || '').toLowerCase();
-          bVal = (b.category || '').toLowerCase();
-        }
+        let aVal = '', bVal = '';
+        if (sortField === 'projectName') { aVal = a.projectName.toLowerCase(); bVal = b.projectName.toLowerCase(); }
+        else if (sortField === 'date') { aVal = a.dateStr; bVal = b.dateStr; }
+        else if (sortField === 'type') { aVal = a.type; bVal = b.type; }
+        else if (sortField === 'responsible') { aVal = a.responsible.toLowerCase(); bVal = b.responsible.toLowerCase(); }
         const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
         return sortDir === 'asc' ? cmp : -cmp;
       });
     }
     return list;
-  }, [filteredNotes, sortField, sortDir]);
-
+  }, [filteredRows, sortField, sortDir]);
 
   const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDir('asc');
-    }
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('asc'); }
+  };
+
+  const SortIcon: React.FC<{ field: SortField }> = ({ field }) => {
+    if (sortField !== field) return null;
+    return sortDir === 'asc' ? <ChevronUp className="w-3.5 h-3.5 inline ml-0.5" /> : <ChevronDown className="w-3.5 h-3.5 inline ml-0.5" />;
   };
 
   const handleExport = useCallback(() => {
-    const getStatusLabel = (s: string) => NOTE_STATUS_CONFIG[normalizeStatus(s)]?.label || 'Eksik';
-    const exportCols = tableDisplayFields.map((f) => f.label);
-    const allCols = ['Proje', ...exportCols, 'Durum', 'Tarih', 'Açıklama', 'Kaydı Açan'];
-    const data = displayNotes.map((note) => {
-      const row: Record<string, string> = {
-        'Proje': note.projectName || '',
-        'Durum': getStatusLabel(note.status),
-        'Tarih': formatWorkDate(getWorkDate(note)),
-        'Açıklama': (note.content || '').length > 500 ? (note.content || '').slice(0, 500) + '...' : (note.content || ''),
-        'Kaydı Açan': note.userName || note.userEmail || ''
+    const data = displayRows.map(row => {
+      const base: Record<string, string> = {
+        'Tür': row.type === 'note' ? 'Saha Notu' : 'Görev',
+        'Proje': row.projectName,
+        'Sorumlu / Ekleyen': row.responsible,
+        'Durum': row.statusLabel,
+        'Tarih': formatWorkDate(row.dateStr),
+        'Açıklama': row.description.length > 500 ? row.description.slice(0, 500) + '...' : row.description,
       };
-      tableDisplayFields.forEach((f) => {
-        const v = getNoteFieldValue(note, f.id);
-        let display = '';
-        if (v !== undefined && v !== null) {
-          if (f.type === 'date' && v) display = formatWorkDate(String(v));
-          else if (Array.isArray(v)) display = v.length > 0 ? v.join(', ') : '';
-          else if (typeof v === 'boolean') display = v ? 'Evet' : '';
-          else if (v !== '') display = String(v);
-        }
-        row[f.label] = display;
-      });
-      return allCols.reduce<Record<string, string>>((acc, col) => {
-        acc[col] = row[col] ?? '';
-        return acc;
-      }, {});
+      if (row.note) {
+        tableDisplayFields.forEach(f => {
+          const v = getNoteFieldValue(row.note!, f.id);
+          let display = '';
+          if (v != null) {
+            if (f.type === 'date' && v) display = formatWorkDate(String(v));
+            else if (Array.isArray(v)) display = v.join(', ');
+            else if (typeof v === 'boolean') display = v ? 'Evet' : '';
+            else if (v !== '') display = String(v);
+          }
+          base[f.label] = display;
+        });
+      }
+      return base;
     });
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'AYT Saha Raporu');
-    XLSX.writeFile(wb, 'AYT_Muhendislik_Saha_Raporu.xlsx');
-  }, [displayNotes, tableDisplayFields]);
+    XLSX.utils.book_append_sheet(wb, ws, 'Genel Rapor');
+    XLSX.writeFile(wb, 'AYT_Muhendislik_Genel_Proje_Raporu.xlsx');
+  }, [displayRows, tableDisplayFields]);
 
-  const handleEditNote = (note: Note) => {
-    setEditingNote(note);
-    setShowAddModal(true);
-  };
-
+  const handleEditNote = (note: Note) => { setEditingNote(note); setShowAddModal(true); };
   const handleDeleteNote = async (note: Note) => {
     if (!canDeleteNote(note)) return;
     if (!confirm(`${note.projectName || 'Bu not'} silinsin mi?`)) return;
-    try {
-      await deleteNote(note);
-    } catch (err) {
-      console.error('Not silinirken hata:', err);
-    }
+    try { await deleteNote(note); } catch { /* handled */ }
   };
-
   const handleSubmitNote = async (formData: NoteFormData, existingImageUrls?: string[]) => {
     if (!editingNote) return;
-    await updateNote(
-      editingNote.id,
-      formData,
-      formData.images.length > 0 ? formData.images : undefined,
-      existingImageUrls
-    );
+    await updateNote(editingNote.id, formData, formData.images.length > 0 ? formData.images : undefined, existingImageUrls);
     setEditingNote(null);
     setShowAddModal(false);
   };
 
-  if (loading) {
-    return <LoadingSpinner fullScreen message="Kayıt tablosu yükleniyor..." />;
-  }
+  const handleRowClick = (row: UnifiedRow) => {
+    if (row.note) { setSelectedNote(row.note); setIsDetailModalOpen(true); }
+    else if (row.task) { setThreadTask(row.task); }
+  };
+
+  const loading = notesLoading || tasksLoading;
+  if (loading) return <LoadingSpinner fullScreen message="Kayıt tablosu yükleniyor..." />;
+
+  const STATUS_COLOR_MAP: Record<string, string> = {
+    green: 'bg-green-500/20 text-green-400',
+    red: 'bg-red-500/20 text-red-400',
+    blue: 'bg-blue-500/20 text-blue-400',
+    yellow: 'bg-yellow-500/20 text-yellow-400',
+  };
 
   return (
-    <div className={`min-h-screen transition-colors ${isDark ? 'bg-slate-950' : 'bg-gray-50'}`}>
+    <div className={`min-h-screen transition-colors ${isDark ? 'bg-slate-950' : 'bg-gray-100'}`}>
       {/* Header */}
-      <header className={`sticky top-0 z-40 border-b transition-colors ${
-        isDark ? 'bg-slate-850 border-slate-700/50' : 'bg-white border-gray-200 shadow-sm'
-      }`}>
-        <div className="max-w-full mx-auto px-4 py-3">
+      <header className={`sticky top-0 z-40 border-b transition-colors ${isDark ? 'bg-slate-900/95 backdrop-blur-md border-slate-800' : 'bg-white/95 backdrop-blur-md border-gray-200 shadow-sm'}`}>
+        <div className="px-5 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Link
-                to="/"
-                className={`p-2 rounded-lg transition-colors ${
-                  isDark ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50' : 'text-gray-600 hover:bg-gray-100'
-                }`}
-                title="Ana Sayfa"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Link>
-              <div className="flex items-center gap-2">
-                <FileSpreadsheet className={`w-5 h-5 ${isDark ? 'text-safety-orange' : 'text-safety-orange-dark'}`} />
-                <div>
-                  <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    Kayıt Tablosu
-                  </h1>
-                  <p className={`text-xs ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>
-                    {displayNotes.length} kayıt
-                    {filters.project || filters.adaParsel || filters.category || filters.progress || filters.status || filterDate ? ` (filtrelenmiş)` : ''}
-                  </p>
-                </div>
+              <FileSpreadsheet className={`w-5 h-5 ${isDark ? 'text-safety-orange' : 'text-safety-orange-dark'}`} />
+              <div>
+                <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Genel Proje Tablosu</h1>
+                <p className={`text-xs ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>
+                  {displayRows.length} kayıt ({notes.length} not + {tasks.length} görev)
+                  {(filters.project || filters.responsible || filters.status || filters.type || filterDate) ? ' (filtrelenmiş)' : ''}
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {isAdmin && (
-                <Link
-                  to="/form-builder"
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isDark
-                      ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                  title="Form Şablonu"
-                >
-                  <Settings2 className="w-4 h-4" />
-                  Form Şablonu
-                </Link>
-              )}
-              <button
-                onClick={handleExport}
-                disabled={displayNotes.length === 0}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                  isDark
-                    ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
-                    : 'bg-green-100 text-green-700 hover:bg-green-200'
-                }`}
-              >
-                <Download className="w-4 h-4" />
-                Excel'e Aktar
-              </button>
-              <UserProfileMenu
-                onOpenProfileSettings={() => setShowProfileSettings(true)}
-                onOpenUserManagement={() => setShowUserManagement(true)}
-                onLogout={logout}
-              />
-            </div>
+            <button
+              onClick={handleExport}
+              disabled={displayRows.length === 0}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
+                isDark ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30' : 'bg-green-100 text-green-700 hover:bg-green-200'
+              }`}
+            >
+              <Download className="w-4 h-4" />
+              Excel'e Aktar
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Table */}
-      <main className="max-w-full mx-auto px-4 py-4">
-        {error && (
-          <div className="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
-            {error}
-          </div>
+      <main className="px-5 py-4">
+        {notesError && (
+          <div className="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">{notesError}</div>
         )}
 
-        <div className={`rounded-lg border overflow-hidden ${
-          isDark ? 'border-slate-700/50' : 'border-gray-200'
-        }`}>
+        <div className={`rounded-lg border overflow-hidden ${isDark ? 'border-slate-700/50' : 'border-gray-200'}`}>
           <div className="overflow-x-auto w-full">
-            <table className="w-full min-w-[1000px] text-sm">
+            <table className="w-full min-w-[1100px] text-sm">
               <thead className="sticky top-0 z-10">
-                <tr className="bg-gray-800 text-white">
-                  <th className="py-2 px-3 text-left font-semibold border-r border-gray-700/50 w-12 whitespace-nowrap">#</th>
-                  <th
-                    className="sticky left-0 z-20 py-2 px-3 text-left font-semibold border-r border-gray-700/50 bg-gray-800 cursor-pointer hover:bg-gray-700/50 select-none whitespace-nowrap shadow-[4px_0_6px_-2px_rgba(0,0,0,0.3)]"
-                    onClick={() => handleSort('projectName')}
-                  >
-                    <span className="flex items-center gap-1">
-                      Proje İsmi
-                      {sortField === 'projectName' && (sortDir === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
-                    </span>
+                <tr className={isDark ? 'bg-gray-800 text-white' : 'bg-gray-800 text-white'}>
+                  <th className="py-2 px-3 text-left font-semibold border-r border-gray-700/50 w-10">#</th>
+                  <th className="py-2 px-3 text-left font-semibold border-r border-gray-700/50 w-20 cursor-pointer hover:bg-gray-700/50 select-none" onClick={() => handleSort('type')}>
+                    Tür<SortIcon field="type" />
                   </th>
-                  {tableDisplayFields.map((f) => (
-                    <th
-                      key={f.id}
-                      className={`py-2 px-3 text-left font-semibold border-r border-gray-700/50 whitespace-nowrap ${
-                        ['ada', 'parsel'].includes(f.id) ? 'font-mono' : ''
-                      }`}
-                    >
-                      {f.label}
-                    </th>
+                  <th className="sticky left-0 z-20 py-2 px-3 text-left font-semibold border-r border-gray-700/50 bg-gray-800 cursor-pointer hover:bg-gray-700/50 select-none shadow-[4px_0_6px_-2px_rgba(0,0,0,0.3)]" onClick={() => handleSort('projectName')}>
+                    Proje<SortIcon field="projectName" />
+                  </th>
+                  <th className="py-2 px-3 text-left font-semibold border-r border-gray-700/50 cursor-pointer hover:bg-gray-700/50 select-none" onClick={() => handleSort('responsible')}>
+                    Sorumlu / Ekleyen<SortIcon field="responsible" />
+                  </th>
+                  {tableDisplayFields.map(f => (
+                    <th key={f.id} className="py-2 px-3 text-left font-semibold border-r border-gray-700/50 whitespace-nowrap">{f.label}</th>
                   ))}
-                  {!tableDisplayFields.some((f) => f.id === 'date') && (
-                    <th
-                      className="py-2 px-3 text-left font-semibold border-r border-gray-700/50 cursor-pointer hover:bg-gray-700/50 select-none font-mono whitespace-nowrap"
-                      onClick={() => handleSort('date')}
-                    >
-                      <span className="flex items-center gap-1">
-                        Tarih
-                        {sortField === 'date' && (sortDir === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
-                      </span>
-                    </th>
-                  )}
+                  <th className="py-2 px-3 text-left font-semibold border-r border-gray-700/50 cursor-pointer hover:bg-gray-700/50 select-none whitespace-nowrap" onClick={() => handleSort('date')}>
+                    Tarih<SortIcon field="date" />
+                  </th>
                   <th className="py-2 px-3 text-left font-semibold border-r border-gray-700/50 whitespace-nowrap">Durum</th>
                   <th className="py-2 px-3 text-left font-semibold w-24 whitespace-nowrap">İşlemler</th>
                 </tr>
+                {/* Filter row */}
                 <tr className="bg-gray-700/80 text-white">
                   <th className="py-1 px-2 border-r border-gray-600/50" />
+                  <th className="py-1 px-2 border-r border-gray-600/50">
+                    <select value={filters.type} onChange={e => setFilters(f => ({ ...f, type: e.target.value as any }))}
+                      className="w-full py-1 px-2 text-sm rounded border border-gray-500 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-safety-orange"
+                    >
+                      <option value="">Tümü</option>
+                      <option value="note">Not</option>
+                      <option value="task">Görev</option>
+                    </select>
+                  </th>
                   <th className="sticky left-0 z-20 py-1 px-2 border-r border-gray-600/50 bg-gray-700/80 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.3)]">
-                    <input
-                      type="text"
-                      value={filters.project}
-                      onChange={(e) => setFilters((f) => ({ ...f, project: e.target.value }))}
-                      placeholder="Ara..."
+                    <input type="text" value={filters.project} onChange={e => setFilters(f => ({ ...f, project: e.target.value }))} placeholder="Ara..."
                       className="w-full py-1 px-2 text-sm rounded border border-gray-500 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-safety-orange"
                     />
                   </th>
-                  {tableDisplayFields.map((f) => (
+                  <th className="py-1 px-2 border-r border-gray-600/50">
+                    <input type="text" value={filters.responsible} onChange={e => setFilters(f => ({ ...f, responsible: e.target.value }))} placeholder="Ara..."
+                      className="w-full py-1 px-2 text-sm rounded border border-gray-500 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-safety-orange"
+                    />
+                  </th>
+                  {tableDisplayFields.map(f => (
                     <th key={f.id} className="py-1 px-2 border-r border-gray-600/50">
-                      {f.id === 'ada' && (
-                        <input
-                          type="text"
-                          value={filters.adaParsel.split('/')[0]}
-                          onChange={(e) => {
-                            const p = filters.adaParsel.split('/');
-                            setFilters((prev) => ({ ...prev, adaParsel: `${e.target.value}/${p[1] || ''}`.replace(/\/$/, '') }));
-                          }}
-                          placeholder="Ada..."
-                          className="w-full py-1 px-2 text-sm rounded border border-gray-500 bg-white text-gray-900 font-mono focus:outline-none focus:ring-1 focus:ring-safety-orange"
-                        />
-                      )}
-                      {f.id === 'parsel' && (
-                        <input
-                          type="text"
-                          value={filters.adaParsel.split('/')[1] || ''}
-                          onChange={(e) => {
-                            const p = filters.adaParsel.split('/');
-                            setFilters((prev) => ({ ...prev, adaParsel: `${p[0] || ''}/${e.target.value}`.replace(/^\//, '') }));
-                          }}
-                          placeholder="Parsel..."
-                          className="w-full py-1 px-2 text-sm rounded border border-gray-500 bg-white text-gray-900 font-mono focus:outline-none focus:ring-1 focus:ring-safety-orange"
-                        />
-                      )}
-                      {f.id === 'category' && (
-                        <input
-                          type="text"
-                          value={filters.category}
-                          onChange={(e) => setFilters((prev) => ({ ...prev, category: e.target.value }))}
+                      {f.showInFilter ? (
+                        <input type={f.id === 'date' ? 'date' : 'text'}
+                          value={dynamicFilters[f.id] ?? ''} onChange={e => setDynamicFilters(prev => ({ ...prev, [f.id]: e.target.value }))}
                           placeholder="Ara..."
                           className="w-full py-1 px-2 text-sm rounded border border-gray-500 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-safety-orange"
                         />
-                      )}
-                      {f.id === 'progressLevel' && (
-                        <input
-                          type="text"
-                          value={filters.progress}
-                          onChange={(e) => setFilters((prev) => ({ ...prev, progress: e.target.value }))}
-                          placeholder="Ara..."
-                          className="w-full py-1 px-2 text-sm rounded border border-gray-500 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-safety-orange"
-                        />
-                      )}
-                      {f.id === 'date' && (
-                        <input
-                          type="date"
-                          value={filterDate}
-                          onChange={(e) => setFilterDate(e.target.value)}
-                          className="w-full py-1 px-2 text-sm rounded border border-gray-500 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-safety-orange"
-                        />
-                      )}
-                      {/* Filter input: non-core columns with showInTable AND showInFilter */}
-                      {!CORE_FIELD_IDS.includes(f.id as (typeof CORE_FIELD_IDS)[number]) && f.showInTable && f.showInFilter && (
-                        <input
-                          type="text"
-                          value={dynamicFilters[f.id] ?? ''}
-                          onChange={(e) => setDynamicFilters((prev) => ({ ...prev, [f.id]: e.target.value }))}
-                          placeholder="Ara..."
-                          className="w-full py-1 px-2 text-sm rounded border border-gray-500 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-safety-orange"
-                        />
-                      )}
-                      {!CORE_FIELD_IDS.includes(f.id as (typeof CORE_FIELD_IDS)[number]) && (!f.showInTable || !f.showInFilter) && <span className="block py-1" />}
+                      ) : <span className="block py-1" />}
                     </th>
                   ))}
-                  {!tableDisplayFields.some((f) => f.id === 'date') && (
-                    <th className="py-1 px-2 border-r border-gray-600/50">
-                      <input
-                        type="date"
-                        value={filterDate}
-                        onChange={(e) => setFilterDate(e.target.value)}
-                        className="w-full py-1 px-2 text-sm rounded border border-gray-500 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-safety-orange"
-                      />
-                    </th>
-                  )}
                   <th className="py-1 px-2 border-r border-gray-600/50">
-                    <select
-                      value={filters.status}
-                      onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+                    <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)}
+                      className="w-full py-1 px-2 text-sm rounded border border-gray-500 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-safety-orange"
+                    />
+                  </th>
+                  <th className="py-1 px-2 border-r border-gray-600/50">
+                    <select value={filters.status} onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
                       className="w-full py-1 px-2 text-sm rounded border border-gray-500 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-safety-orange"
                     >
                       <option value="">Tümü</option>
                       <option value="Eksik">Eksik</option>
                       <option value="Onay">Onay</option>
+                      <option value="Bekliyor">Bekliyor</option>
+                      <option value="Devam Ediyor">Devam Ediyor</option>
+                      <option value="Tamamlandı">Tamamlandı</option>
                     </select>
                   </th>
                   <th className="py-1 px-2" />
                 </tr>
               </thead>
               <tbody>
-              {displayNotes.length === 0 ? (
-                <tr>
-                  <td colSpan={5 + tableDisplayFields.length + (tableDisplayFields.some((f) => f.id === 'date') ? 0 : 1)} className={`py-8 text-center whitespace-normal ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
-                    Henüz kayıt bulunmuyor
-                  </td>
-                </tr>
-              ) : (
-                displayNotes.map((note, idx) => {
-                  const status = normalizeStatus(note.status);
-                  const isOddRow = idx % 2 === 1;
-                  const rowBg = isOddRow ? (isDark ? 'bg-slate-900/30' : 'bg-gray-50') : (isDark ? 'bg-slate-850' : 'bg-white');
-                  const stickyBg = isOddRow ? (isDark ? 'bg-slate-900/30' : 'bg-gray-50') : (isDark ? 'bg-slate-850' : 'bg-white');
-                  return (
-                    <tr
-                      key={note.id}
-                      className={`border-t transition-colors ${rowBg} ${
-                        isDark ? 'border-slate-700/50 hover:bg-slate-800/50' : 'border-gray-200 hover:bg-blue-50'
-                      }`}
-                    >
-                      <td className={`py-2 px-3 font-mono whitespace-nowrap ${isDark ? 'text-concrete-300' : 'text-gray-600'}`}>
-                        {idx + 1}
-                      </td>
-                      <td className={`sticky left-0 z-[5] py-2 px-3 border-r whitespace-nowrap ${stickyBg} ${isDark ? 'border-slate-700/50 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)]' : 'border-gray-200 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.08)]'}`}>
-                        <button
-                          type="button"
-                          onClick={() => { setSelectedNote(note); setIsDetailModalOpen(true); }}
-                          className={`text-left w-full text-blue-500 hover:text-blue-400 hover:underline cursor-pointer focus:outline-none focus:ring-0 ${isDark ? 'text-blue-400 hover:text-blue-300' : ''}`}
-                        >
-                          {note.projectName || '-'}
-                        </button>
-                      </td>
-                      {tableDisplayFields.map((f) => {
-                        const val = getNoteFieldValue(note, f.id);
-                        let display = '-';
-                        if (val !== undefined && val !== null) {
-                          if (f.type === 'date' && val) display = formatWorkDate(String(val));
-                          else if (Array.isArray(val)) display = val.length > 0 ? val.join(', ') : '-';
-                          else if (typeof val === 'boolean') display = val ? 'Evet' : '-';
-                          else if (val !== '') display = String(val);
-                        }
-                        return (
-                          <td
-                            key={f.id}
-                            className={`py-2 px-3 border-r whitespace-nowrap ${['ada', 'parsel'].includes(f.id) ? 'font-mono ' : ''}${isDark ? 'border-slate-700/50 text-concrete-300' : 'border-gray-200 text-gray-700'}`}
-                          >
-                            {display}
-                          </td>
-                        );
-                      })}
-                      {!tableDisplayFields.some((f) => f.id === 'date') && (
-                        <td className={`py-2 px-3 border-r font-mono whitespace-nowrap ${isDark ? 'border-slate-700/50 text-concrete-300' : 'border-gray-200 text-gray-700'}`}>
-                          {formatWorkDate(getWorkDate(note))}
+                {displayRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={7 + tableDisplayFields.length} className={`py-8 text-center ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
+                      Henüz kayıt bulunmuyor
+                    </td>
+                  </tr>
+                ) : (
+                  displayRows.map((row, idx) => {
+                    const isOdd = idx % 2 === 1;
+                    const rowBg = isOdd ? (isDark ? 'bg-slate-900/30' : 'bg-gray-50') : (isDark ? 'bg-slate-850' : 'bg-white');
+                    const stickyBg = isOdd ? (isDark ? 'bg-slate-900/30' : 'bg-gray-50') : (isDark ? 'bg-slate-850' : 'bg-white');
+                    return (
+                      <tr key={`${row.type}-${row.id}`}
+                        className={`border-t transition-colors ${rowBg} ${isDark ? 'border-slate-700/50 hover:bg-slate-800/50' : 'border-gray-200 hover:bg-blue-50'}`}
+                      >
+                        <td className={`py-2 px-3 font-mono whitespace-nowrap ${isDark ? 'text-concrete-300' : 'text-gray-600'}`}>{idx + 1}</td>
+                        <td className={`py-2 px-3 border-r whitespace-nowrap ${isDark ? 'border-slate-700/50' : 'border-gray-200'}`}>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                            row.type === 'note'
+                              ? isDark ? 'bg-purple-500/20 text-purple-300' : 'bg-purple-100 text-purple-700'
+                              : isDark ? 'bg-cyan-500/20 text-cyan-300' : 'bg-cyan-100 text-cyan-700'
+                          }`}>
+                            {row.type === 'note' ? 'Kayıt' : 'Plan'}
+                          </span>
                         </td>
-                      )}
-                      <td className={`py-2 px-3 border-r whitespace-nowrap ${isDark ? 'border-slate-700/50' : 'border-gray-200'}`}>
-                        <span
-                          className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                            status === 'Onay'
-                              ? 'bg-green-500/20 text-green-400'
-                              : 'bg-red-500/20 text-red-400'
-                          }`}
-                        >
-                          {NOTE_STATUS_CONFIG[status]?.label || 'Eksik'}
-                        </span>
-                      </td>
-                      <td className={`py-2 px-3 whitespace-nowrap ${isDark ? 'text-concrete-400' : 'text-gray-600'}`}>
-                        <div className="flex items-center gap-1">
-                          {canEditNote(note) && (
-                            <button
-                              onClick={() => handleEditNote(note)}
-                              className={`p-1.5 rounded transition-colors ${
-                                isDark ? 'hover:bg-slate-700 text-concrete-300' : 'hover:bg-gray-200 text-gray-600'
-                              }`}
-                              title="Düzenle"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          {canDeleteNote(note) && (
-                            <button
-                              onClick={() => handleDeleteNote(note)}
-                              className="p-1.5 rounded transition-colors hover:bg-red-500/20 text-red-400"
-                              title="Sil"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                        <td className={`sticky left-0 z-[5] py-2 px-3 border-r whitespace-nowrap ${stickyBg} ${isDark ? 'border-slate-700/50 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)]' : 'border-gray-200 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.08)]'}`}>
+                          <button type="button" onClick={() => handleRowClick(row)}
+                            className={`text-left w-full hover:underline cursor-pointer focus:outline-none ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-500 hover:text-blue-400'}`}
+                          >
+                            {row.projectName || '-'}
+                          </button>
+                        </td>
+                        <td className={`py-2 px-3 border-r whitespace-nowrap ${isDark ? 'border-slate-700/50 text-concrete-300' : 'border-gray-200 text-gray-700'}`}>
+                          {row.responsible || '-'}
+                        </td>
+                        {tableDisplayFields.map(f => {
+                          if (!row.note) return <td key={f.id} className={`py-2 px-3 border-r whitespace-nowrap ${isDark ? 'border-slate-700/50 text-concrete-500' : 'border-gray-200 text-gray-400'}`}>–</td>;
+                          const val = getNoteFieldValue(row.note, f.id);
+                          let display = '-';
+                          if (val != null) {
+                            if (f.type === 'date' && val) display = formatWorkDate(String(val));
+                            else if (Array.isArray(val)) display = val.length > 0 ? val.join(', ') : '-';
+                            else if (typeof val === 'boolean') display = val ? 'Evet' : '-';
+                            else if (val !== '') display = String(val);
+                          }
+                          return (
+                            <td key={f.id} className={`py-2 px-3 border-r whitespace-nowrap ${['ada', 'parsel'].includes(f.id) ? 'font-mono ' : ''}${isDark ? 'border-slate-700/50 text-concrete-300' : 'border-gray-200 text-gray-700'}`}>
+                              {display}
+                            </td>
+                          );
+                        })}
+                        <td className={`py-2 px-3 border-r font-mono whitespace-nowrap ${isDark ? 'border-slate-700/50 text-concrete-300' : 'border-gray-200 text-gray-700'}`}>
+                          {formatWorkDate(row.dateStr)}
+                        </td>
+                        <td className={`py-2 px-3 border-r whitespace-nowrap ${isDark ? 'border-slate-700/50' : 'border-gray-200'}`}>
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR_MAP[row.statusColor]}`}>
+                            {row.statusLabel}
+                          </span>
+                        </td>
+                        <td className={`py-2 px-3 whitespace-nowrap ${isDark ? 'text-concrete-400' : 'text-gray-600'}`}>
+                          <div className="flex items-center gap-1">
+                            {row.note && canEditNote(row.note) && (
+                              <button onClick={() => handleEditNote(row.note!)}
+                                className={`p-1.5 rounded transition-colors ${isDark ? 'hover:bg-slate-700 text-concrete-300' : 'hover:bg-gray-200 text-gray-600'}`}
+                                title="Düzenle"
+                              ><Pencil className="w-3.5 h-3.5" /></button>
+                            )}
+                            {row.note && canDeleteNote(row.note) && (
+                              <button onClick={() => handleDeleteNote(row.note!)}
+                                className="p-1.5 rounded transition-colors hover:bg-red-500/20 text-red-400"
+                                title="Sil"
+                              ><Trash2 className="w-3.5 h-3.5" /></button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </main>
@@ -531,16 +453,11 @@ const TablePage: React.FC = () => {
         onSubmit={handleSubmitNote}
         editNote={editingNote}
       />
-      <ProfileSettings
-        isOpen={showProfileSettings}
-        onClose={() => setShowProfileSettings(false)}
+      <TaskThreadModal
+        task={threadTask}
+        isOpen={!!threadTask}
+        onClose={() => setThreadTask(null)}
       />
-      {isAdmin && (
-        <UserManagement
-          isOpen={showUserManagement}
-          onClose={() => setShowUserManagement(false)}
-        />
-      )}
     </div>
   );
 };

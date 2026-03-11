@@ -87,24 +87,19 @@ export const useWeeklyPlan = () => {
     []
   );
 
-  /** Fetch ALL tasks (for monthly/timeline views or analytics) */
+  /** Fetch ALL tasks (for monthly/timeline views or analytics).
+   *  Does NOT touch shared loading state to avoid racing with getTasksByWeek. */
   const getAllTasks = useCallback(async (): Promise<WeeklyTask[]> => {
-    setLoading(true);
-    setError(null);
     try {
       const tasksRef = collection(db, 'weekly_tasks');
       const q = query(tasksRef, orderBy('createdAt', 'asc'));
       const snapshot = await getDocs(q);
-      const tasks: WeeklyTask[] = snapshot.docs.map((d) => ({
+      return snapshot.docs.map((d) => ({
         id: d.id,
         ...(d.data() as Omit<WeeklyTask, 'id'>)
       }));
-      setLoading(false);
-      return tasks;
     } catch (err) {
       console.error('Error fetching all tasks:', err);
-      setError('Görevler yüklenirken bir hata oluştu.');
-      setLoading(false);
       return [];
     }
   }, []);
