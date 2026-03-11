@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Plus, X, Loader2, AlertCircle,
-  Flag, Clock, User, CalendarDays, Briefcase,
-  FileText, Palette,
+  Flag, User, CalendarDays, Briefcase,
+  FileText, Palette, MapPin, Tag,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { TaskCategoryColor, TaskPriority, UserProfile } from '../types';
+import {
+  TaskCategoryColor, TaskPriority, UserProfile, CATEGORY_OPTIONS,
+} from '../types';
 import { CreateTaskInput } from '../hooks/useWeeklyPlan';
-import { getCurrentWeekString } from '../utils/dateUtils';
 
 const COLOR_OPTIONS: { value: TaskCategoryColor; label: string; swatch: string }[] = [
   { value: 'bg-blue-100 text-blue-800', label: 'Mavi', swatch: 'bg-blue-500' },
@@ -24,11 +25,15 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string; dot: string; ring:
   { value: 'Kritik', label: 'Kritik', dot: 'bg-red-600',    ring: 'ring-red-400' },
 ];
 
+function todayISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: CreateTaskInput) => Promise<void>;
-  weekString: string;
   isDark: boolean;
 }
 
@@ -36,7 +41,6 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
-  weekString: parentWeekString,
   isDark,
 }) => {
   const { getAllUsers } = useAuth();
@@ -47,22 +51,27 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [assignedTo, setAssignedTo] = useState('');
   const [color, setColor] = useState<TaskCategoryColor>('bg-blue-100 text-blue-800');
   const [priority, setPriority] = useState<TaskPriority>('Normal');
-  const [estimatedHours, setEstimatedHours] = useState('');
-  const [weekString, setWeekString] = useState(parentWeekString || getCurrentWeekString());
+  const [targetDate, setTargetDate] = useState(todayISO());
+  const [adaParsel, setAdaParsel] = useState('');
+  const [category, setCategory] = useState('');
+  const [subCategory, setSubCategory] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
 
   useEffect(() => {
     if (isOpen) {
-      setWeekString(parentWeekString || getCurrentWeekString());
+      setTargetDate(todayISO());
       getAllUsers()
         .then((u) => setUsers(u.filter((p) => p.isActive !== false)))
         .catch(() => {});
     }
-  }, [isOpen, parentWeekString, getAllUsers]);
+  }, [isOpen, getAllUsers]);
 
-  const isValid = useMemo(() => title.trim().length > 0 && weekString.length > 0, [title, weekString]);
+  const isValid = useMemo(
+    () => title.trim().length > 0 && targetDate.length > 0,
+    [title, targetDate],
+  );
 
   if (!isOpen) return null;
 
@@ -73,8 +82,10 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     setAssignedTo('');
     setColor('bg-blue-100 text-blue-800');
     setPriority('Normal');
-    setEstimatedHours('');
-    setWeekString(parentWeekString || getCurrentWeekString());
+    setTargetDate(todayISO());
+    setAdaParsel('');
+    setCategory('');
+    setSubCategory('');
     setError(null);
     setSaving(false);
   };
@@ -82,7 +93,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid) {
-      setError('Görev Adı ve Hedef Hafta zorunludur.');
+      setError('Görev Adı ve Hedef Bitiş Tarihi zorunludur.');
       return;
     }
     setSaving(true);
@@ -94,10 +105,12 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
         projectId: projectId.trim(),
         assignedTo: assignedTo.trim(),
         color,
-        weekString,
+        targetDate,
         status: 'Bekliyor',
         priority,
-        estimatedHours: estimatedHours ? Number(estimatedHours) : 0,
+        adaParsel: adaParsel.trim(),
+        category,
+        subCategory: subCategory.trim(),
         plannedStart: '',
         plannedEnd: '',
         dependencies: [],
@@ -147,14 +160,11 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
               Yeni Görev Oluştur
             </h2>
             <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
-              Haftalık iş planına yeni bir görev ekleyin
+              İş planına yeni bir görev ekleyin
             </p>
           </div>
           <button
-            onClick={() => {
-              resetForm();
-              onClose();
-            }}
+            onClick={() => { resetForm(); onClose(); }}
             disabled={saving}
             className={`p-2 rounded-lg transition-colors ${
               isDark
@@ -193,17 +203,17 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
             />
           </div>
 
-          {/* Row 2 — Week + Assigned To */}
+          {/* Row 2 — Target Date + Assigned To */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>
                 <CalendarDays className="w-3.5 h-3.5" />
-                Hedef Hafta *
+                Hedef Bitiş Tarihi *
               </label>
               <input
-                type="week"
-                value={weekString}
-                onChange={(e) => setWeekString(e.target.value)}
+                type="date"
+                value={targetDate}
+                onChange={(e) => setTargetDate(e.target.value)}
                 className={inputClass}
                 required
                 disabled={saving}
@@ -241,8 +251,57 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
             </div>
           </div>
 
-          {/* Row 3 — Priority + Estimated Hours */}
+          {/* Row 3 — Ada/Parsel + Kategori */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>
+                <MapPin className="w-3.5 h-3.5" />
+                Ada / Parsel
+              </label>
+              <input
+                type="text"
+                value={adaParsel}
+                onChange={(e) => setAdaParsel(e.target.value)}
+                placeholder="Örn: 1234 / 5"
+                className={inputClass}
+                disabled={saving}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>
+                <Tag className="w-3.5 h-3.5" />
+                Kategori
+              </label>
+              <select
+                value={category}
+                onChange={(e) => { setCategory(e.target.value); setSubCategory(''); }}
+                className={inputClass}
+                disabled={saving}
+              >
+                <option value="">Seçiniz</option>
+                {CATEGORY_OPTIONS.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Row 4 — Alt Kategori + Priority */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>
+                <Tag className="w-3.5 h-3.5" />
+                Alt Kategori
+              </label>
+              <input
+                type="text"
+                value={subCategory}
+                onChange={(e) => setSubCategory(e.target.value)}
+                placeholder="Alt kategori (opsiyonel)"
+                className={inputClass}
+                disabled={saving}
+              />
+            </div>
             <div>
               <label className={labelClass}>
                 <Flag className="w-3.5 h-3.5" />
@@ -273,25 +332,9 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
                 ))}
               </div>
             </div>
-            <div>
-              <label className={labelClass}>
-                <Clock className="w-3.5 h-3.5" />
-                Tahmini Efor (saat)
-              </label>
-              <input
-                type="number"
-                value={estimatedHours}
-                onChange={(e) => setEstimatedHours(e.target.value)}
-                placeholder="0"
-                className={inputClass}
-                disabled={saving}
-                min="0"
-                step="0.5"
-              />
-            </div>
           </div>
 
-          {/* Row 4 — Project + Color */}
+          {/* Row 5 — Project + Color */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>
@@ -331,7 +374,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
             </div>
           </div>
 
-          {/* Row 5 — Description (full width) */}
+          {/* Row 6 — Description (full width) */}
           <div>
             <label className={labelClass}>
               <FileText className="w-3.5 h-3.5" />
@@ -355,10 +398,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           >
             <button
               type="button"
-              onClick={() => {
-                resetForm();
-                onClose();
-              }}
+              onClick={() => { resetForm(); onClose(); }}
               disabled={saving}
               className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 isDark

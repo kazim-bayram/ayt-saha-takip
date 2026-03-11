@@ -273,8 +273,8 @@ export interface WeeklyTask {
   title: string;
   description: string;
   status: TaskStatus;
-  /** ISO week string, e.g. "2026-W08" */
-  weekString: string;
+  /** Target completion date (YYYY-MM-DD) */
+  targetDate: string;
   color: TaskCategoryColor;
   assignedTo: string;
   createdAt: Timestamp;
@@ -282,10 +282,12 @@ export interface WeeklyTask {
 
   priority?: TaskPriority;
 
+  adaParsel?: string;
+  category?: string;
+  subCategory?: string;
+
   /** Finish-to-Start dependency: IDs of tasks that must complete before this one starts */
   dependencies?: string[];
-  /** Planned effort in hours */
-  estimatedHours?: number;
   /** Actual effort logged */
   actualHours?: number;
   /** Material cost in TRY */

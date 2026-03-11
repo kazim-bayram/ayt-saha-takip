@@ -8,8 +8,6 @@ import {
   User,
   GripVertical,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   CheckCircle2,
   RefreshCw,
   BarChart3,
@@ -36,11 +34,6 @@ import NoteDetailModal from '../components/NoteDetailModal';
 import { useNotes } from '../hooks/useNotes';
 import MonthlyView from '../components/MonthlyView';
 import TimelineView from '../components/TimelineView';
-
-import {
-  getISOWeekString, getCurrentWeekString,
-  weekStringToMonday, shiftWeek, formatWeekRange, isValidWeekString,
-} from '../utils/dateUtils';
 
 /** Normalize any status string to TaskStatus for strict column matching */
 function normalizeTaskStatus(s: string | undefined): TaskStatus {
@@ -376,31 +369,26 @@ const AnalyticsMiniDashboard: React.FC<{ tasks: WeeklyTask[]; notes: Note[]; isD
 
 const ProjectConsole: React.FC = () => {
   const { isDark } = useTheme();
-  const { getTasksByWeek, getAllTasks, createTask, updateTaskStatus } = useWeeklyPlan();
+  const { getAllTasks, createTask, updateTaskStatus } = useWeeklyPlan();
   const {
     notes: liveNotes, createNote, updateNote, uploadProgress,
     addComment, deleteComment, canEditNote,
   } = useNotes();
 
-  // Local loading/error state to avoid hook's shared loading race
   const [pageLoading, setPageLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
-  const [currentWeek, setCurrentWeek] = useState(getCurrentWeekString);
   const [tasks, setTasks] = useState<WeeklyTask[]>([]);
-  const [allTasks, setAllTasks] = useState<WeeklyTask[]>([]);
   const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAddNoteModal, setShowAddNoteModal] = useState(false);
   const [threadTask, setThreadTask] = useState<WeeklyTask | null>(null);
   const [showAddMenu, setShowAddMenu] = useState(false);
 
-  // Note detail/edit modals
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
 
-  // Monthly calendar state
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [calYear, setCalYear] = useState(new Date().getFullYear());
 
@@ -415,42 +403,29 @@ const ProjectConsole: React.FC = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Fetch tasks - managed with local loading state to avoid race
   const fetchTasks = useCallback(async () => {
     setPageLoading(true);
     setFetchError(null);
     try {
-      const [weekTasks, all] = await Promise.all([
-        getTasksByWeek(currentWeek),
-        getAllTasks(),
-      ]);
-      const normalizedWeek = weekTasks.map(t => {
-        if (!isValidWeekString(t.weekString)) {
-          console.warn(`[Kanban] Task "${t.title}" (${t.id}) has malformed weekString: "${t.weekString}"`);
-        }
-        return { ...t, status: normalizeTaskStatus(t.status) };
-      });
-      const normalizedAll = all.map(t => ({ ...t, status: normalizeTaskStatus(t.status) }));
-      setTasks(normalizedWeek);
-      setAllTasks(normalizedAll);
+      const all = await getAllTasks();
+      console.log('RAW TASKS FROM DB:', all);
+      const normalized = all.map(t => ({ ...t, status: normalizeTaskStatus(t.status) }));
+      setTasks(normalized);
     } catch {
       setFetchError('Veriler yüklenirken bir hata oluştu.');
     } finally {
       setPageLoading(false);
     }
-  }, [currentWeek, getTasksByWeek, getAllTasks]);
+  }, [getAllTasks]);
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
 
-  // Use liveNotes from useNotes (respects role-based Firestore rules)
   const allNotes = liveNotes;
 
-  // Build unified Kanban cards: tasks + notes for current week
   const kanbanCards = useMemo(() => {
     type CardEntry = { task: WeeklyTask; isNote: boolean; noteRef?: Note; noteStatus?: string };
     const map: Record<TaskStatus, CardEntry[]> = { 'Bekliyor': [], 'Devam Ediyor': [], 'Tamamlandı': [] };
 
-    // Add real tasks (status already normalized; fallback for safety)
     tasks.forEach((t) => {
       if (!t || t.status == null) return;
       const col = STATUSES.includes(t.status as TaskStatus) ? (t.status as TaskStatus) : normalizeTaskStatus(t.status);
@@ -458,40 +433,27 @@ const ProjectConsole: React.FC = () => {
       map[col].push({ task: t, isNote: false });
     });
 
-    // Add notes mapped into the week range
-    const monday = weekStringToMonday(currentWeek);
-    const sundayEnd = new Date(monday);
-    sundayEnd.setUTCDate(monday.getUTCDate() + 7); // exclusive upper bound
-    const mondayMs = monday.getTime();
-    const sundayMs = sundayEnd.getTime();
-
     allNotes.forEach(note => {
-      const created = note.createdAt?.toDate?.();
-      if (!created) return;
-      // Normalize to UTC date for comparison
-      const noteUtc = Date.UTC(created.getFullYear(), created.getMonth(), created.getDate());
-      if (noteUtc >= mondayMs && noteUtc < sundayMs) {
-        const status = mapNoteToKanbanStatus(note.status);
-        const fakeTask: WeeklyTask = {
-          id: `note-${note.id}`,
-          projectId: note.projectName,
-          title: note.projectName || note.content?.slice(0, 60) || 'Saha Notu',
-          description: note.content || '',
-          status,
-          weekString: currentWeek,
-          color: note.status === 'Onay' ? 'bg-green-100 text-green-800'
-            : note.status === 'Olumsuz Sonuç' ? 'bg-red-100 text-red-800'
-            : 'bg-yellow-100 text-yellow-800',
-          assignedTo: note.userName || note.userEmail,
-          createdAt: note.createdAt,
-          updatedAt: note.updatedAt || note.createdAt,
-        };
-        map[status].push({ task: fakeTask, isNote: true, noteRef: note, noteStatus: note.status });
-      }
+      const status = mapNoteToKanbanStatus(note.status);
+      const fakeTask: WeeklyTask = {
+        id: `note-${note.id}`,
+        projectId: note.projectName,
+        title: note.projectName || note.content?.slice(0, 60) || 'Saha Notu',
+        description: note.content || '',
+        status,
+        targetDate: '',
+        color: note.status === 'Onay' ? 'bg-green-100 text-green-800'
+          : note.status === 'Olumsuz Sonuç' ? 'bg-red-100 text-red-800'
+          : 'bg-yellow-100 text-yellow-800',
+        assignedTo: note.userName || note.userEmail,
+        createdAt: note.createdAt,
+        updatedAt: note.updatedAt || note.createdAt,
+      };
+      map[status].push({ task: fakeTask, isNote: true, noteRef: note, noteStatus: note.status });
     });
 
     return map;
-  }, [tasks, allNotes, currentWeek]);
+  }, [tasks, allNotes]);
 
   const handleStatusChange = useCallback(
     async (taskId: string, newStatus: TaskStatus) => {
@@ -555,7 +517,7 @@ const ProjectConsole: React.FC = () => {
   }, []);
 
   const VIEW_OPTIONS: { key: ViewMode; icon: React.ElementType; label: string }[] = [
-    { key: 'kanban', icon: LayoutGrid, label: 'Hafta' },
+    { key: 'kanban', icon: LayoutGrid, label: 'Kanban' },
     { key: 'monthly', icon: CalendarDays, label: 'Ay' },
     { key: 'timeline', icon: GanttChart, label: 'Zaman Çizelgesi' },
   ];
@@ -571,7 +533,7 @@ const ProjectConsole: React.FC = () => {
               <div>
                 <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Proje Konsol</h1>
                 <p className={`text-xs ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>
-                  {allTasks.length} görev · {allNotes.length} saha notu · {formatWeekRange(currentWeek)}
+                  {tasks.length} görev · {allNotes.length} saha notu
                 </p>
               </div>
             </div>
@@ -598,20 +560,6 @@ const ProjectConsole: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              {viewMode === 'kanban' && (
-                <div className="flex items-center gap-1">
-                  <button onClick={() => setCurrentWeek(w => shiftWeek(w, -1))}
-                    className={`p-2 rounded-lg transition-colors ${isDark ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50' : 'text-gray-600 hover:bg-gray-100'}`}
-                  ><ChevronLeft className="w-4 h-4" /></button>
-                  <button onClick={() => setCurrentWeek(getISOWeekString(new Date()))}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition-colors ${isDark ? 'bg-slate-700/50 text-white hover:bg-slate-700' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
-                  >{currentWeek}</button>
-                  <button onClick={() => setCurrentWeek(w => shiftWeek(w, 1))}
-                    className={`p-2 rounded-lg transition-colors ${isDark ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50' : 'text-gray-600 hover:bg-gray-100'}`}
-                  ><ChevronRight className="w-4 h-4" /></button>
-                </div>
-              )}
-
               <div ref={addMenuRef} className="relative">
                 <button
                   onClick={() => setShowAddMenu(p => !p)}
@@ -667,7 +615,7 @@ const ProjectConsole: React.FC = () => {
           </div>
         )}
 
-        <AnalyticsMiniDashboard tasks={allTasks} notes={allNotes} isDark={isDark} />
+        <AnalyticsMiniDashboard tasks={tasks} notes={allNotes} isDark={isDark} />
 
         {pageLoading ? (
           <div className="flex items-center justify-center py-20 gap-3">
@@ -703,7 +651,7 @@ const ProjectConsole: React.FC = () => {
 
             {viewMode === 'monthly' && (
               <MonthlyView
-                tasks={allTasks}
+                tasks={tasks}
                 notes={allNotes}
                 year={calYear}
                 month={calMonth}
@@ -717,7 +665,7 @@ const ProjectConsole: React.FC = () => {
 
             {viewMode === 'timeline' && (
               <TimelineView
-                tasks={allTasks}
+                tasks={tasks}
                 isDark={isDark}
                 onTaskClick={(task) => setThreadTask(task)}
               />
@@ -727,7 +675,7 @@ const ProjectConsole: React.FC = () => {
       </div>
 
       {/* Modals */}
-      <AddTaskModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreateTask} weekString={currentWeek} isDark={isDark} />
+      <AddTaskModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreateTask} isDark={isDark} />
 
       <AddNoteModal
         isOpen={showAddNoteModal}

@@ -58,48 +58,23 @@ export const useWeeklyPlan = () => {
   // Tasks CRUD (with resilient error handling)
   // ---------------------------------------------------------------------------
 
-  const getTasksByWeek = useCallback(
-    async (weekString: string): Promise<WeeklyTask[]> => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const tasksRef = collection(db, 'weekly_tasks');
-        const q = query(
-          tasksRef,
-          where('weekString', '==', weekString),
-          orderBy('createdAt', 'asc')
-        );
-        const snapshot = await getDocs(q);
-        const tasks: WeeklyTask[] = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as Omit<WeeklyTask, 'id'>)
-        }));
-        setLoading(false);
-        return tasks;
-      } catch (err) {
-        console.error('Error fetching weekly tasks:', err);
-        setError('Haftalık görevler yüklenirken bir hata oluştu.');
-        setLoading(false);
-        return [];
-      }
-    },
-    []
-  );
-
-  /** Fetch ALL tasks (for monthly/timeline views or analytics).
-   *  Does NOT touch shared loading state to avoid racing with getTasksByWeek. */
   const getAllTasks = useCallback(async (): Promise<WeeklyTask[]> => {
+    setLoading(true);
+    setError(null);
     try {
       const tasksRef = collection(db, 'weekly_tasks');
       const q = query(tasksRef, orderBy('createdAt', 'asc'));
       const snapshot = await getDocs(q);
-      return snapshot.docs.map((d) => ({
+      const tasks = snapshot.docs.map((d) => ({
         id: d.id,
         ...(d.data() as Omit<WeeklyTask, 'id'>)
       }));
+      setLoading(false);
+      return tasks;
     } catch (err) {
       console.error('Error fetching all tasks:', err);
+      setError('Görevler yüklenirken bir hata oluştu.');
+      setLoading(false);
       return [];
     }
   }, []);
@@ -163,14 +138,16 @@ export const useWeeklyPlan = () => {
         title: data.title,
         description: data.description,
         status: data.status,
-        weekString: data.weekString,
+        targetDate: data.targetDate,
         color: data.color,
         assignedTo: data.assignedTo,
         createdAt: now,
         updatedAt: now,
         priority: data.priority || 'Normal',
+        adaParsel: data.adaParsel || '',
+        category: data.category || '',
+        subCategory: data.subCategory || '',
         dependencies: data.dependencies || [],
-        estimatedHours: data.estimatedHours || 0,
         actualHours: data.actualHours || 0,
         materialCosts: data.materialCosts || 0,
         plannedStart: data.plannedStart || '',
@@ -320,7 +297,6 @@ export const useWeeklyPlan = () => {
   return {
     loading,
     error,
-    getTasksByWeek,
     getTasksByMonth,
     getAllTasks,
     getNotes,

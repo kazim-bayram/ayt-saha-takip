@@ -23,17 +23,12 @@ export const useProjectAnalytics = (
     const inProgressTasks = tasks.filter(t => t.status === 'Devam Ediyor').length;
     const waitingTasks = tasks.filter(t => t.status === 'Bekliyor').length;
 
-    const totalPlannedHours = tasks.reduce((sum, t) => sum + (t.estimatedHours || 0), 0);
     const totalActualHours = tasks.reduce((sum, t) => sum + (t.actualHours || 0), 0);
     const totalMaterialCosts = tasks.reduce((sum, t) => sum + (t.materialCosts || 0), 0);
 
-    // SPI = EV / PV
-    // EV = planned hours of completed tasks
-    const earnedValue = tasks
-      .filter(t => t.status === 'Tamamlandı')
-      .reduce((sum, t) => sum + (t.estimatedHours || 0), 0);
-    const plannedValue = totalPlannedHours || 1;
-    const spiValue = plannedValue > 0 ? earnedValue / plannedValue : 0;
+    // SPI based on task completion ratio
+    const totalPlannedHours = totalActualHours || tasks.length;
+    const spiValue = tasks.length > 0 ? completedTasks / tasks.length : 0;
 
     let spiLabel: string;
     if (spiValue >= 1) spiLabel = 'Planın Önünde';
