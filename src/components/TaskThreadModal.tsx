@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Component, ErrorInfo, ReactNode } from 'react';
 import {
   X,
   Send,
@@ -20,6 +20,48 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useWeeklyPlan, AddMessageInput } from '../hooks/useWeeklyPlan';
 import { WeeklyTask, TaskThreadMessage, TaskStatus } from '../types';
+
+// ---------------------------------------------------------------------------
+// Error Boundary — catches any unhandled render crash inside the modal
+// ---------------------------------------------------------------------------
+
+interface EBProps { children: ReactNode; onReset?: () => void }
+interface EBState { hasError: boolean; error: Error | null }
+
+class TaskModalErrorBoundary extends Component<EBProps, EBState> {
+  state: EBState = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error: Error): EBState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[TaskThreadModal] Render crash caught:', error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl p-8 max-w-md mx-4 text-center space-y-4">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Bir hata oluştu</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Görev detayları yüklenirken beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.
+            </p>
+            <button
+              onClick={() => { this.setState({ hasError: false, error: null }); this.props.onReset?.(); }}
+              className="px-4 py-2 text-sm font-medium bg-safety-orange text-white rounded-lg hover:bg-safety-orange-dark transition-colors"
+            >
+              Kapat
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -69,6 +111,9 @@ interface BubbleProps {
 }
 
 const MessageBubble: React.FC<BubbleProps> = ({ msg, isDark, isOwn, onReply, onMarkRFIResponded }) => {
+  if (!msg) return null;
+  const safeContent = typeof msg.content === 'string' ? msg.content : '';
+  const safeName = typeof msg.authorName === 'string' ? msg.authorName : 'Bilinmeyen';
   const isRFI = msg.isRFI === true;
   const rfiDeadline = msg.rfiResponseDeadline;
   const rfiResponded = msg.rfiRespondedAt;
@@ -116,21 +161,21 @@ const MessageBubble: React.FC<BubbleProps> = ({ msg, isDark, isOwn, onReply, onM
         <div className="flex items-center gap-2">
           <User className={`w-3 h-3 ${isDark ? 'text-concrete-400' : 'text-gray-400'}`} />
           <span className={`text-xs font-semibold ${isDark ? 'text-concrete-200' : 'text-gray-700'}`}>
-            {msg.authorName}
+            {safeName}
           </span>
           <span className={`text-[10px] ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>
             {formatTimestamp(msg.createdAt)}
           </span>
         </div>
 
-        {msg.replyToSnippet && (
+        {typeof msg.replyToSnippet === 'string' && msg.replyToSnippet && (
           <div className={`text-xs pl-3 border-l-2 italic line-clamp-2 ${isDark ? 'border-concrete-500 text-concrete-400' : 'border-gray-300 text-gray-500'}`}>
             {msg.replyToSnippet}
           </div>
         )}
 
-        {msg.content && (
-          <p className={`text-sm whitespace-pre-wrap ${isDark ? 'text-white' : 'text-gray-900'}`}>{msg.content}</p>
+        {safeContent && (
+          <p className={`text-sm whitespace-pre-wrap ${isDark ? 'text-white' : 'text-gray-900'}`}>{safeContent}</p>
         )}
 
         {msg.imageUrls && msg.imageUrls.length > 0 && (
@@ -166,24 +211,28 @@ const MessageBubble: React.FC<BubbleProps> = ({ msg, isDark, isOwn, onReply, onM
 // SystemLogEntry
 // ---------------------------------------------------------------------------
 
-const SystemLogEntry: React.FC<{ msg: TaskThreadMessage; isDark: boolean }> = ({ msg, isDark }) => (
-  <div className="flex items-center gap-2 justify-center py-2">
-    <ArrowRight className={`w-3 h-3 ${isDark ? 'text-concrete-500' : 'text-gray-400'}`} />
-    <span className={`text-xs ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>{msg.content}</span>
-    <span className={`text-[10px] ${isDark ? 'text-concrete-600' : 'text-gray-300'}`}>— {msg.authorName}, {formatTimestamp(msg.createdAt)}</span>
-  </div>
-);
+const SystemLogEntry: React.FC<{ msg: TaskThreadMessage; isDark: boolean }> = ({ msg, isDark }) => {
+  if (!msg) return null;
+  return (
+    <div className="flex items-center gap-2 justify-center py-2">
+      <ArrowRight className={`w-3 h-3 ${isDark ? 'text-concrete-500' : 'text-gray-400'}`} />
+      <span className={`text-xs ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>{typeof msg.content === 'string' ? msg.content : ''}</span>
+      <span className={`text-[10px] ${isDark ? 'text-concrete-600' : 'text-gray-300'}`}>— {typeof msg.authorName === 'string' ? msg.authorName : ''}, {formatTimestamp(msg.createdAt)}</span>
+    </div>
+  );
+};
 
 // ---------------------------------------------------------------------------
 // PDF Generation
 // ---------------------------------------------------------------------------
 
-function generateThreadPDF(task: WeeklyTask, messages: TaskThreadMessage[]) {
+function generateThreadPDF(task: WeeklyTask | null, messages: TaskThreadMessage[]) {
+  if (!task) return;
+  const title = task.title || 'Gorev';
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   let y = 20;
 
-  // Letterhead
   doc.setFontSize(18);
   doc.setTextColor(255, 107, 0);
   doc.text('AYT Muhendislik', 14, y);
@@ -197,10 +246,9 @@ function generateThreadPDF(task: WeeklyTask, messages: TaskThreadMessage[]) {
   doc.line(14, y, pageWidth - 14, y);
   y += 10;
 
-  // Task info
   doc.setFontSize(14);
   doc.setTextColor(30, 30, 30);
-  doc.text(task.title, 14, y);
+  doc.text(title, 14, y);
   y += 7;
 
   doc.setFontSize(9);
@@ -209,24 +257,23 @@ function generateThreadPDF(task: WeeklyTask, messages: TaskThreadMessage[]) {
   y += 5;
   doc.text(`Sorumlu: ${task.assignedTo || '-'}`, 14, y);
   y += 5;
-  doc.text(`Durum: ${task.status}`, 14, y);
+  doc.text(`Durum: ${task.status || '-'}`, 14, y);
   y += 5;
   doc.text(`Tarih: ${new Date().toLocaleDateString('tr-TR')}`, 14, y);
   y += 10;
 
-  // Separator
   doc.setDrawColor(200, 200, 200);
   doc.setLineWidth(0.2);
   doc.line(14, y, pageWidth - 14, y);
   y += 8;
 
-  // Messages
   doc.setFontSize(11);
   doc.setTextColor(30, 30, 30);
   doc.text('Mesaj Gecmisi', 14, y);
   y += 8;
 
-  messages.forEach(msg => {
+  (messages || []).forEach(msg => {
+    if (!msg) return;
     if (y > 270) { doc.addPage(); y = 20; }
 
     const isRFI = msg.isRFI === true;
@@ -238,20 +285,23 @@ function generateThreadPDF(task: WeeklyTask, messages: TaskThreadMessage[]) {
       doc.rect(14, y - 3, pageWidth - 28, 20, 'S');
     }
 
+    const authorName = typeof msg.authorName === 'string' ? msg.authorName : '';
+    const content = typeof msg.content === 'string' ? msg.content : '';
+
     doc.setFontSize(8);
     doc.setTextColor(100, 100, 100);
     const prefix = isRFI ? '[RFI] ' : msg.messageType === 'system_log' ? '[SYS] ' : '';
-    doc.text(`${prefix}${msg.authorName} - ${formatTimestamp(msg.createdAt)}`, 16, y);
+    doc.text(`${prefix}${authorName} - ${formatTimestamp(msg.createdAt)}`, 16, y);
     y += 4;
 
     doc.setFontSize(9);
     doc.setTextColor(30, 30, 30);
-    const lines = doc.splitTextToSize(msg.content, pageWidth - 32);
+    const lines = doc.splitTextToSize(content || ' ', pageWidth - 32);
     doc.text(lines, 16, y);
     y += lines.length * 4 + 6;
   });
 
-  doc.save(`AYT_Thread_${task.title.replace(/\s+/g, '_').slice(0, 30)}.pdf`);
+  doc.save(`AYT_Thread_${title.replace(/\s+/g, '_').slice(0, 30)}.pdf`);
 }
 
 // ---------------------------------------------------------------------------
@@ -316,7 +366,7 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
         content: msgText,
         images: pendingFiles.length > 0 ? pendingFiles : undefined,
         replyToId: replyTo?.id ?? undefined,
-        replyToSnippet: replyTo ? replyTo.content.slice(0, 120) : undefined,
+        replyToSnippet: replyTo ? (replyTo.content ?? '').slice(0, 120) : undefined,
         isRFI: isRFIMode,
         rfiResponseDeadline: rfiDeadline ? new Date(rfiDeadline) : undefined,
       };
@@ -472,7 +522,7 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
           {replyTo && (
             <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${isDark ? 'bg-slate-800 text-concrete-300' : 'bg-gray-100 text-gray-600'}`}>
               <CornerDownRight className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="truncate flex-1"><strong>{replyTo.authorName}:</strong> {replyTo.content.slice(0, 80)}{replyTo.content.length > 80 ? '…' : ''}</span>
+              <span className="truncate flex-1"><strong>{replyTo?.authorName ?? ''}:</strong> {(replyTo?.content ?? '').slice(0, 80)}{(replyTo?.content?.length ?? 0) > 80 ? '…' : ''}</span>
               <button onClick={() => setReplyTo(null)} className="flex-shrink-0 hover:text-red-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
             </div>
           )}
@@ -543,4 +593,11 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
   );
 };
 
-export default TaskThreadModal;
+// Wrap in Error Boundary so a render crash shows a fallback instead of a white screen
+const TaskThreadModalSafe: React.FC<TaskThreadModalProps> = (props) => (
+  <TaskModalErrorBoundary onReset={props.onClose}>
+    <TaskThreadModal {...props} />
+  </TaskModalErrorBoundary>
+);
+
+export default TaskThreadModalSafe;
