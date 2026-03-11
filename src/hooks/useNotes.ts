@@ -153,7 +153,7 @@ export const useNotes = () => {
         imageUrls,
         content: formData.content || '',
         projectName: formData.projectName || '',
-        status: formData.status || ('Eksik' as NoteStatus),
+        status: formData.status || ('Beklemede' as NoteStatus),
         createdAt: Timestamp.now()
       };
 
@@ -401,14 +401,16 @@ export const useNotes = () => {
   // Get KPI statistics
   const getKPIStats = useCallback(() => {
     const totalNotes = notes.length;
-    const eksikCount = notes.filter(note => normalizeStatus(note.status) === 'Eksik').length;
+    const beklemedeCount = notes.filter(note => normalizeStatus(note.status) === 'Beklemede').length;
     const onayCount = notes.filter(note => normalizeStatus(note.status) === 'Onay').length;
+    const olumsuzCount = notes.filter(note => normalizeStatus(note.status) === 'Olumsuz Sonuç').length;
     const activeWorkers = new Set(notes.map(note => note.userId)).size;
 
     return {
       totalNotes,
-      eksikCount,
+      beklemedeCount,
       onayCount,
+      olumsuzCount,
       activeWorkers
     };
   }, [notes]);

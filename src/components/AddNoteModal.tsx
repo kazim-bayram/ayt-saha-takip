@@ -40,7 +40,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
   const { schema, loading: schemaLoading } = useNoteSchema();
   const [content, setContent] = useState('');
   const [projectName, setProjectName] = useState('');
-  const [status, setStatus] = useState<NoteStatus>('Eksik');
+  const [status, setStatus] = useState<NoteStatus>('Beklemede');
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
@@ -88,13 +88,13 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
       setFormData(initial);
       setContent('');
       setProjectName('');
-      setStatus('Eksik');
+      setStatus('Beklemede');
       imagePreviews.forEach((p) => URL.revokeObjectURL(p.previewUrl));
       setImagePreviews([]);
       setExistingImages([]);
       setError(null);
     }
-  }, [editNote, isOpen, schema.fields]); // schema.fields for re-populate when schema loads
+  }, [editNote, isOpen, schema.fields]);
 
   const resetForm = () => {
     const initial: Record<string, any> = {};
@@ -107,7 +107,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
     setFormData(initial);
     setContent('');
     setProjectName('');
-    setStatus('Eksik');
+    setStatus('Beklemede');
     imagePreviews.forEach((p) => URL.revokeObjectURL(p.previewUrl));
     setImagePreviews([]);
     setExistingImages([]);
@@ -115,7 +115,15 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
   };
 
   const setFieldValue = (fieldId: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [fieldId]: value }));
+    setFormData((prev) => {
+      const next = { ...prev, [fieldId]: value };
+      const parentField = fields.find((f) => f.id === fieldId && f.subOptions);
+      if (parentField) {
+        const childField = fields.find((f) => f.type === 'select' && f.id === 'alt_kategori');
+        if (childField) next[childField.id] = '';
+      }
+      return next;
+    });
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -417,42 +425,63 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
                 Form alanları yükleniyor...
               </div>
             ) : (
-              fields.map((field) => (
-                <DynamicFieldInput
-                  key={field.id}
-                  field={field}
-                  value={formData[field.id] ?? (field.type === 'checkbox' ? false : field.type === 'date' ? new Date().toISOString().split('T')[0] : field.type === 'multiselect' ? [] : '')}
-                  onChange={(v) => setFieldValue(field.id, v)}
-                  isDark={isDark}
-                />
-              ))
+              fields.map((field) => {
+                let effectiveField = field;
+                if (field.id === 'alt_kategori') {
+                  const kategoriField = fields.find((f) => f.id === 'kategori');
+                  const selectedKategori = formData['kategori'] as string;
+                  const subOpts = kategoriField?.subOptions?.[selectedKategori] ?? [];
+                  effectiveField = { ...field, options: subOpts };
+                }
+                return (
+                  <DynamicFieldInput
+                    key={field.id}
+                    field={effectiveField}
+                    value={formData[field.id] ?? (field.type === 'checkbox' ? false : field.type === 'date' ? new Date().toISOString().split('T')[0] : field.type === 'multiselect' ? [] : '')}
+                    onChange={(v) => setFieldValue(field.id, v)}
+                    isDark={isDark}
+                    disabled={field.id === 'alt_kategori' && !formData['kategori']}
+                  />
+                );
+              })
             )}
 
             {/* Status - Core */}
             <div>
               <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>Durum *</label>
-              <div className={`grid grid-cols-2 gap-2 p-1 rounded-xl ${isDark ? 'bg-slate-900/50' : 'bg-gray-100'}`}>
+              <div className={`grid grid-cols-3 gap-2 p-1 rounded-xl ${isDark ? 'bg-slate-900/50' : 'bg-gray-100'}`}>
                 <button
                   type="button"
-                  onClick={() => setStatus('Eksik')}
-                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
-                    status === 'Eksik'
-                      ? 'bg-red-500 text-white shadow-md'
+                  onClick={() => setStatus('Beklemede')}
+                  className={`flex items-center justify-center gap-2 px-3 py-3 rounded-lg text-sm font-semibold transition-all ${
+                    status === 'Beklemede'
+                      ? 'bg-amber-500 text-white shadow-md'
                       : isDark ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50' : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
                   }`}
                 >
-                  <span>🔴</span> Eksik
+                  <span>🟡</span> Beklemede
                 </button>
                 <button
                   type="button"
                   onClick={() => setStatus('Onay')}
-                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+                  className={`flex items-center justify-center gap-2 px-3 py-3 rounded-lg text-sm font-semibold transition-all ${
                     status === 'Onay'
                       ? 'bg-green-500 text-white shadow-md'
                       : isDark ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50' : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
                   }`}
                 >
                   <span>🟢</span> Onay
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatus('Olumsuz Sonuç')}
+                  className={`flex items-center justify-center gap-2 px-3 py-3 rounded-lg text-sm font-semibold transition-all ${
+                    status === 'Olumsuz Sonuç'
+                      ? 'bg-red-500 text-white shadow-md'
+                      : isDark ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50' : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
+                  }`}
+                >
+                  <span>🔴</span> Olumsuz
                 </button>
               </div>
             </div>
@@ -516,12 +545,14 @@ function DynamicFieldInput({
   field,
   value,
   onChange,
-  isDark
+  isDark,
+  disabled
 }: {
   field: FormField;
   value: any;
   onChange: (v: any) => void;
   isDark: boolean;
+  disabled?: boolean;
 }) {
   const baseInputClass = `w-full rounded-xl px-4 py-3 transition-all focus:outline-none focus:ring-2 focus:ring-safety-orange/20 ${
     isDark
@@ -568,10 +599,11 @@ function DynamicFieldInput({
           <select
             value={value ?? ''}
             onChange={(e) => onChange(e.target.value)}
-            className={baseInputClass}
+            className={`${baseInputClass} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             required={field.required}
+            disabled={disabled}
           >
-            <option value="">Seçiniz...</option>
+            <option value="">{disabled ? 'Önce üst kategori seçiniz...' : 'Seçiniz...'}</option>
             {(field.options || []).map((opt) => (
               <option key={opt} value={opt}>
                 {opt}

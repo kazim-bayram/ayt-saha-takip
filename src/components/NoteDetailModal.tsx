@@ -22,7 +22,8 @@ import {
   ChevronUp,
   Shield,
   Trash2,
-  Edit3
+  Edit3,
+  Clock
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { Note, NoteStatus, NOTE_STATUS_CONFIG, getNoteImages, Comment, normalizeStatus, getWorkDate, formatWorkDate, getNoteFieldValue } from '../types';
@@ -74,9 +75,11 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
     switch (status) {
       case 'Onay':
         return <CheckCircle2 className="w-4 h-4" />;
-      case 'Eksik':
-      default:
+      case 'Olumsuz Sonuç':
         return <XCircle className="w-4 h-4" />;
+      case 'Beklemede':
+      default:
+        return <Clock className="w-4 h-4" />;
     }
   };
 

@@ -37,43 +37,10 @@ import { useNotes } from '../hooks/useNotes';
 import MonthlyView from '../components/MonthlyView';
 import TimelineView from '../components/TimelineView';
 
-// ---------------------------------------------------------------------------
-// Week utilities
-// ---------------------------------------------------------------------------
-
-function getISOWeekString(date: Date): string {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
-}
-
-function weekStringToMonday(ws: string): Date {
-  const [yearStr, weekStr] = ws.split('-W');
-  const year = Number(yearStr);
-  const week = Number(weekStr);
-  const jan4 = new Date(Date.UTC(year, 0, 4));
-  const dayOfWeek = jan4.getUTCDay() || 7;
-  const monday = new Date(jan4);
-  monday.setUTCDate(jan4.getUTCDate() - dayOfWeek + 1 + (week - 1) * 7);
-  return monday;
-}
-
-function shiftWeek(ws: string, offset: number): string {
-  const monday = weekStringToMonday(ws);
-  monday.setUTCDate(monday.getUTCDate() + offset * 7);
-  return getISOWeekString(monday);
-}
-
-function formatWeekRange(ws: string): string {
-  const monday = weekStringToMonday(ws);
-  const sunday = new Date(monday);
-  sunday.setUTCDate(monday.getUTCDate() + 6);
-  const fmt = (d: Date) =>
-    `${String(d.getUTCDate()).padStart(2, '0')}.${String(d.getUTCMonth() + 1).padStart(2, '0')}.${d.getUTCFullYear()}`;
-  return `${fmt(monday)} – ${fmt(sunday)}`;
-}
+import {
+  getISOWeekString, getCurrentWeekString,
+  weekStringToMonday, shiftWeek, formatWeekRange, isValidWeekString,
+} from '../utils/dateUtils';
 
 /** Normalize any status string to TaskStatus for strict column matching */
 function normalizeTaskStatus(s: string | undefined): TaskStatus {
@@ -89,8 +56,8 @@ function normalizeTaskStatus(s: string | undefined): TaskStatus {
 
 /** Map a note's status to a Kanban column */
 function mapNoteToKanbanStatus(noteStatus: string): TaskStatus {
-  if (noteStatus === 'Onay') return 'Tamamlandı';
-  return 'Devam Ediyor'; // 'Eksik' = needs attention → Devam Ediyor
+  if (noteStatus === 'Onay' || noteStatus === 'Olumsuz Sonuç') return 'Tamamlandı';
+  return 'Bekliyor';
 }
 
 // ---------------------------------------------------------------------------
@@ -150,9 +117,10 @@ interface TaskCardProps {
   onDragStart: (e: DragEvent<HTMLDivElement>, task: WeeklyTask) => void;
   onClick: () => void;
   isNote?: boolean;
+  noteStatus?: string;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, isDark, onStatusChange, onDragStart, onClick, isNote }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ task, isDark, onStatusChange, onDragStart, onClick, isNote, noteStatus }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -175,7 +143,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, isDark, onStatusChange, onDra
         isDark
           ? 'bg-slate-800 hover:bg-slate-750 shadow-sm shadow-black/20'
           : 'bg-white hover:bg-gray-50 shadow-sm'
-      } ${isNote ? 'opacity-90' : 'cursor-grab active:cursor-grabbing'}`}
+      } ${isNote ? 'opacity-90' : 'cursor-grab active:cursor-grabbing'} ${isNote && noteStatus === 'Olumsuz Sonuç' ? 'ring-2 ring-red-500/60' : ''}`}
     >
       {!isNote && (
         <GripVertical
@@ -254,11 +222,13 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, isDark, onStatusChange, onDra
       {isNote && (
         <div className="mt-2">
           <span className={`text-[11px] font-medium px-2 py-1 rounded-md ${
-            task.status === 'Tamamlandı'
+            noteStatus === 'Onay'
               ? isDark ? 'bg-green-500/20 text-green-300' : 'bg-green-100 text-green-700'
-              : isDark ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-700'
+              : noteStatus === 'Olumsuz Sonuç'
+                ? isDark ? 'bg-red-500/20 text-red-300' : 'bg-red-100 text-red-700'
+                : isDark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700'
           }`}>
-            {task.status === 'Tamamlandı' ? 'Onay' : 'Eksik'}
+            {noteStatus === 'Onay' ? 'Onay' : noteStatus === 'Olumsuz Sonuç' ? 'Olumsuz Sonuç' : 'Beklemede'}
           </span>
         </div>
       )}
@@ -266,134 +236,8 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, isDark, onStatusChange, onDra
   );
 };
 
-// ---------------------------------------------------------------------------
-// AddTaskModal
-// ---------------------------------------------------------------------------
-
-interface AddTaskModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (data: CreateTaskInput) => Promise<void>;
-  weekString: string;
-  isDark: boolean;
-}
-
-const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSubmit, weekString, isDark }) => {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [projectId, setProjectId] = useState('');
-  const [assignedTo, setAssignedTo] = useState('');
-  const [color, setColor] = useState<TaskCategoryColor>('bg-blue-100 text-blue-800');
-  const [estimatedHours, setEstimatedHours] = useState('');
-  const [plannedStart, setPlannedStart] = useState('');
-  const [plannedEnd, setPlannedEnd] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  if (!isOpen) return null;
-
-  const resetForm = () => {
-    setTitle(''); setDescription(''); setProjectId(''); setAssignedTo('');
-    setColor('bg-blue-100 text-blue-800'); setEstimatedHours(''); setPlannedStart(''); setPlannedEnd('');
-    setError(null); setSaving(false);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) { setError('Başlık gereklidir'); return; }
-    setSaving(true); setError(null);
-    try {
-      await onSubmit({
-        title: title.trim(),
-        description: description.trim(),
-        projectId: projectId.trim(),
-        assignedTo: assignedTo.trim(),
-        color, weekString, status: 'Bekliyor',
-        estimatedHours: estimatedHours ? Number(estimatedHours) : 0,
-        plannedStart, plannedEnd,
-        dependencies: [],
-        actualHours: 0, materialCosts: 0,
-      });
-      resetForm(); onClose();
-    } catch (err: any) { setError(err.message || 'Bir hata oluştu'); } finally { setSaving(false); }
-  };
-
-  const inputClass = `w-full rounded-xl px-4 py-3 transition-all focus:outline-none focus:ring-2 focus:ring-safety-orange/20 ${
-    isDark
-      ? 'bg-slate-900/50 border border-slate-600 text-white placeholder-concrete-500 focus:border-safety-orange'
-      : 'bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-400 focus:border-safety-orange'
-  }`;
-
-  return (
-    <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
-      onClick={(e) => { if (e.target === e.currentTarget && !saving) { resetForm(); onClose(); } }}
-    >
-      <div className={`rounded-2xl max-w-lg w-full shadow-2xl border animate-slide-up max-h-[90vh] overflow-y-auto ${isDark ? 'bg-slate-850 border-slate-700/50' : 'bg-white border-gray-200'}`}>
-        <div className={`flex items-center justify-between p-4 border-b ${isDark ? 'border-slate-700/50' : 'border-gray-200'}`}>
-          <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Yeni Görev Ekle</h2>
-          <button onClick={() => { resetForm(); onClose(); }} disabled={saving}
-            className={`p-2 rounded-lg transition-colors ${isDark ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
-          ><X className="w-5 h-5" /></button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          {error && (
-            <div className="p-3 rounded-xl flex items-center gap-3 bg-red-500/10 border border-red-500/30">
-              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" /><p className="text-red-300 text-sm">{error}</p>
-            </div>
-          )}
-          <div>
-            <label className={`block text-sm font-medium mb-1.5 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>Başlık *</label>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Görev başlığı" className={inputClass} required disabled={saving} />
-          </div>
-          <div>
-            <label className={`block text-sm font-medium mb-1.5 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>Açıklama</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Görev açıklaması (opsiyonel)" rows={3} className={inputClass} disabled={saving} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={`block text-sm font-medium mb-1.5 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>Proje</label>
-              <input type="text" value={projectId} onChange={(e) => setProjectId(e.target.value)} placeholder="Proje adı" className={inputClass} disabled={saving} />
-            </div>
-            <div>
-              <label className={`block text-sm font-medium mb-1.5 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>Sorumlu</label>
-              <input type="text" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} placeholder="Kişi adı" className={inputClass} disabled={saving} />
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className={`block text-sm font-medium mb-1.5 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>Tahmini Saat</label>
-              <input type="number" value={estimatedHours} onChange={(e) => setEstimatedHours(e.target.value)} placeholder="0" className={inputClass} disabled={saving} min="0" />
-            </div>
-            <div>
-              <label className={`block text-sm font-medium mb-1.5 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>Başlangıç</label>
-              <input type="date" value={plannedStart} onChange={(e) => setPlannedStart(e.target.value)} className={inputClass} disabled={saving} />
-            </div>
-            <div>
-              <label className={`block text-sm font-medium mb-1.5 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>Bitiş</label>
-              <input type="date" value={plannedEnd} onChange={(e) => setPlannedEnd(e.target.value)} className={inputClass} disabled={saving} />
-            </div>
-          </div>
-          <div>
-            <label className={`block text-sm font-medium mb-1.5 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>Renk Etiketi</label>
-            <div className="flex gap-2">
-              {COLOR_OPTIONS.map((opt) => (
-                <button key={opt.value} type="button" onClick={() => setColor(opt.value)} disabled={saving} title={opt.label}
-                  className={`w-8 h-8 rounded-full ${opt.swatch} transition-all ${color === opt.value ? 'ring-2 ring-offset-2 ring-safety-orange' : 'opacity-60 hover:opacity-100'} ${isDark ? 'ring-offset-slate-850' : 'ring-offset-white'}`}
-                />
-              ))}
-            </div>
-          </div>
-          <button type="submit" disabled={saving}
-            className="w-full flex items-center justify-center gap-2 bg-safety-orange hover:bg-safety-orange-dark text-white font-semibold py-3 px-4 rounded-xl transition-colors disabled:opacity-50"
-          >
-            {saving ? <><Loader2 className="w-5 h-5 animate-spin" />Oluşturuluyor...</> : <><Plus className="w-5 h-5" />Görev Oluştur</>}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-};
+// AddTaskModal is now a standalone component
+import AddTaskModal from '../components/AddTaskModal';
 
 // ---------------------------------------------------------------------------
 // KanbanColumn
@@ -401,7 +245,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSubmit, 
 
 interface KanbanColumnProps {
   status: TaskStatus;
-  cards: { task: WeeklyTask; isNote: boolean; noteRef?: Note }[];
+  cards: { task: WeeklyTask; isNote: boolean; noteRef?: Note; noteStatus?: string }[];
   isDark: boolean;
   onStatusChange: (taskId: string, status: TaskStatus) => void;
   onDragStart: (e: DragEvent<HTMLDivElement>, task: WeeklyTask) => void;
@@ -438,7 +282,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
         {cards.length === 0 ? (
           <p className={`text-xs text-center py-8 ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>{meta.emptyText}</p>
         ) : (
-          cards.map(({ task, isNote, noteRef }) => (
+          cards.map(({ task, isNote, noteRef, noteStatus }) => (
             <TaskCard
               key={task.id}
               task={task}
@@ -447,6 +291,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
               onDragStart={onDragStart}
               onClick={() => isNote && noteRef ? onNoteClick(noteRef) : onTaskClick(task)}
               isNote={isNote}
+              noteStatus={noteStatus}
             />
           ))
         )}
@@ -542,7 +387,7 @@ const ProjectConsole: React.FC = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
-  const [currentWeek, setCurrentWeek] = useState(() => getISOWeekString(new Date()));
+  const [currentWeek, setCurrentWeek] = useState(getCurrentWeekString);
   const [tasks, setTasks] = useState<WeeklyTask[]>([]);
   const [allTasks, setAllTasks] = useState<WeeklyTask[]>([]);
   const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
@@ -579,14 +424,15 @@ const ProjectConsole: React.FC = () => {
         getTasksByWeek(currentWeek),
         getAllTasks(),
       ]);
-      // Normalize task statuses to ensure column match
-      const normalizedWeek = weekTasks.map(t => ({ ...t, status: normalizeTaskStatus(t.status) }));
+      const normalizedWeek = weekTasks.map(t => {
+        if (!isValidWeekString(t.weekString)) {
+          console.warn(`[Kanban] Task "${t.title}" (${t.id}) has malformed weekString: "${t.weekString}"`);
+        }
+        return { ...t, status: normalizeTaskStatus(t.status) };
+      });
       const normalizedAll = all.map(t => ({ ...t, status: normalizeTaskStatus(t.status) }));
       setTasks(normalizedWeek);
       setAllTasks(normalizedAll);
-      // Debug: verify week/format sync
-      console.log('Current Week Filter:', currentWeek);
-      console.log('Fetched Tasks:', weekTasks);
     } catch {
       setFetchError('Veriler yüklenirken bir hata oluştu.');
     } finally {
@@ -601,7 +447,7 @@ const ProjectConsole: React.FC = () => {
 
   // Build unified Kanban cards: tasks + notes for current week
   const kanbanCards = useMemo(() => {
-    type CardEntry = { task: WeeklyTask; isNote: boolean; noteRef?: Note };
+    type CardEntry = { task: WeeklyTask; isNote: boolean; noteRef?: Note; noteStatus?: string };
     const map: Record<TaskStatus, CardEntry[]> = { 'Bekliyor': [], 'Devam Ediyor': [], 'Tamamlandı': [] };
 
     // Add real tasks (status already normalized; fallback for safety)
@@ -633,12 +479,14 @@ const ProjectConsole: React.FC = () => {
           description: note.content || '',
           status,
           weekString: currentWeek,
-          color: note.status === 'Onay' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800',
+          color: note.status === 'Onay' ? 'bg-green-100 text-green-800'
+            : note.status === 'Olumsuz Sonuç' ? 'bg-red-100 text-red-800'
+            : 'bg-yellow-100 text-yellow-800',
           assignedTo: note.userName || note.userEmail,
           createdAt: note.createdAt,
           updatedAt: note.updatedAt || note.createdAt,
         };
-        map[status].push({ task: fakeTask, isNote: true, noteRef: note });
+        map[status].push({ task: fakeTask, isNote: true, noteRef: note, noteStatus: note.status });
       }
     });
 

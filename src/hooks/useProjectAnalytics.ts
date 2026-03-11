@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { WeeklyTask, Note } from '../types';
+import { WeeklyTask, Note, normalizeStatus } from '../types';
 
 export interface ProjectAnalytics {
   spiValue: number;
@@ -11,7 +11,7 @@ export interface ProjectAnalytics {
   inProgressTasks: number;
   waitingTasks: number;
   bottleneckWorkers: { name: string; count: number; staleDays: number }[];
-  noteStats: { total: number; eksik: number; onay: number };
+  noteStats: { total: number; beklemede: number; onay: number; olumsuz: number };
 }
 
 export const useProjectAnalytics = (
@@ -63,8 +63,9 @@ export const useProjectAnalytics = (
 
     const noteStats = {
       total: notes.length,
-      eksik: notes.filter(n => n.status === 'Eksik').length,
-      onay: notes.filter(n => n.status === 'Onay').length,
+      beklemede: notes.filter(n => normalizeStatus(n.status) === 'Beklemede').length,
+      onay: notes.filter(n => normalizeStatus(n.status) === 'Onay').length,
+      olumsuz: notes.filter(n => normalizeStatus(n.status) === 'Olumsuz Sonuç').length,
     };
 
     return {

@@ -54,6 +54,107 @@ const TYPE_HINTS: Record<FormFieldType, string> = {
   checkbox: 'Evet/Hayır onay kutusu için.'
 };
 
+/** Sub-options manager: maps parent options to child options */
+function SubOptionsManager({
+  parentOptions,
+  subOptions,
+  onChange,
+  isDark
+}: {
+  parentOptions: string[];
+  subOptions: Record<string, string[]>;
+  onChange: (so: Record<string, string[]>) => void;
+  isDark: boolean;
+}) {
+  const [expandedParent, setExpandedParent] = useState<string | null>(null);
+  const [inputValues, setInputValues] = useState<Record<string, string>>({});
+
+  const addSubOption = (parent: string) => {
+    const v = (inputValues[parent] || '').trim();
+    if (!v) return;
+    const current = subOptions[parent] || [];
+    if (current.includes(v)) return;
+    onChange({ ...subOptions, [parent]: [...current, v] });
+    setInputValues((prev) => ({ ...prev, [parent]: '' }));
+  };
+
+  const removeSubOption = (parent: string, idx: number) => {
+    const current = subOptions[parent] || [];
+    onChange({ ...subOptions, [parent]: current.filter((_, i) => i !== idx) });
+  };
+
+  const inputClass = `flex-1 rounded-lg px-3 py-2 text-sm border ${
+    isDark ? 'bg-slate-800 border-slate-600 text-white placeholder-concrete-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+  }`;
+
+  return (
+    <div className="space-y-2">
+      <p className={`text-xs ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
+        Her ana seçenek için alt kategorileri tanımlayın.
+      </p>
+      {parentOptions.map((parent) => {
+        const isExpanded = expandedParent === parent;
+        const subs = subOptions[parent] || [];
+        return (
+          <div key={parent} className={`rounded-lg border ${isDark ? 'border-slate-700/50' : 'border-gray-200'}`}>
+            <button
+              type="button"
+              onClick={() => setExpandedParent(isExpanded ? null : parent)}
+              className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium ${isDark ? 'text-concrete-200 hover:bg-slate-800/50' : 'text-gray-700 hover:bg-gray-50'}`}
+            >
+              <span>{parent} {subs.length > 0 && <span className={`text-xs ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>({subs.length} alt kategori)</span>}</span>
+              <ChevronRight className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+            </button>
+            {isExpanded && (
+              <div className={`px-3 pb-3 space-y-2 border-t ${isDark ? 'border-slate-700/50' : 'border-gray-200'}`}>
+                <div className="flex gap-2 mt-2">
+                  <input
+                    type="text"
+                    value={inputValues[parent] || ''}
+                    onChange={(e) => setInputValues((prev) => ({ ...prev, [parent]: e.target.value }))}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSubOption(parent))}
+                    placeholder="Alt kategori yazın..."
+                    className={inputClass}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => addSubOption(parent)}
+                    disabled={!(inputValues[parent] || '').trim()}
+                    className="flex items-center justify-center w-10 h-9 rounded-lg bg-safety-orange hover:bg-safety-orange-dark text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+                {subs.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {subs.map((sub, idx) => (
+                      <span
+                        key={idx}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-sm ${
+                          isDark ? 'bg-slate-700 text-concrete-200' : 'bg-gray-200 text-gray-800'
+                        }`}
+                      >
+                        {sub}
+                        <button
+                          type="button"
+                          onClick={() => removeSubOption(parent, idx)}
+                          className="p-0.5 rounded hover:bg-red-500/20 text-red-400 transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Options Manager for select/multiselect */
 function OptionsManager({
   options,
@@ -197,6 +298,7 @@ const FormBuilder: React.FC = () => {
     type: 'text',
     required: false,
     options: [],
+    subOptions: {},
     order: 0,
     placeholder: '',
     description: '',
@@ -261,6 +363,7 @@ const FormBuilder: React.FC = () => {
       type,
       required: Boolean(newField.required),
       options: type === 'select' || type === 'multiselect' ? (newField.options || []) : undefined,
+      subOptions: type === 'select' && newField.subOptions && Object.keys(newField.subOptions).length > 0 ? newField.subOptions : undefined,
       order: maxOrder + 1,
       placeholder: newField.placeholder || undefined,
       description: newField.description || undefined,
@@ -268,7 +371,7 @@ const FormBuilder: React.FC = () => {
       showInFilter: Boolean(newField.showInFilter)
     };
     setSchema({ ...schema, fields: [...schema.fields, field].sort((a, b) => a.order - b.order) });
-    setNewField({ id: '', label: '', type: 'text', required: false, options: [], order: 0, placeholder: '', description: '', showInTable: false, showInFilter: false });
+    setNewField({ id: '', label: '', type: 'text', required: false, options: [], subOptions: {}, order: 0, placeholder: '', description: '', showInTable: false, showInFilter: false });
     setIdManuallyEdited(false);
     setShowAddForm(false);
   };
@@ -426,7 +529,7 @@ const FormBuilder: React.FC = () => {
               onClick={() => {
                 setShowAddForm(!showAddForm);
                 setError(null);
-                setNewField({ id: '', label: '', type: 'text', required: false, options: [], order: 0, placeholder: '', description: '', showInTable: false, showInFilter: false });
+                setNewField({ id: '', label: '', type: 'text', required: false, options: [], subOptions: {}, order: 0, placeholder: '', description: '', showInTable: false, showInFilter: false });
                 setIdManuallyEdited(false);
               }}
               className="flex items-center gap-2 px-4 py-2 bg-safety-orange hover:bg-safety-orange-dark text-white rounded-lg text-sm font-medium"
@@ -505,18 +608,33 @@ const FormBuilder: React.FC = () => {
                     </div>
                   </div>
                   {(newField.type === 'select' || newField.type === 'multiselect') && (
-                    <div>
-                      <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
-                        Seçenekler Listesi *
-                      </label>
+                    <div className="space-y-4">
+                      <div>
+                        <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                          Seçenekler Listesi *
+                        </label>
                         <p className={`text-xs mb-2 ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
-                        Saha personelinin seçebileceği maddeleri ekleyin.
-                      </p>
-                      <OptionsManager
-                        options={newField.options || []}
-                        onChange={(opts) => setNewField((p) => ({ ...p, options: opts }))}
-                        isDark={isDark}
-                      />
+                          Saha personelinin seçebileceği maddeleri ekleyin.
+                        </p>
+                        <OptionsManager
+                          options={newField.options || []}
+                          onChange={(opts) => setNewField((p) => ({ ...p, options: opts }))}
+                          isDark={isDark}
+                        />
+                      </div>
+                      {newField.type === 'select' && (newField.options || []).length > 0 && (
+                        <div>
+                          <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                            Alt Kategoriler (Opsiyonel)
+                          </label>
+                          <SubOptionsManager
+                            parentOptions={newField.options || []}
+                            subOptions={newField.subOptions || {}}
+                            onChange={(so) => setNewField((p) => ({ ...p, subOptions: so }))}
+                            isDark={isDark}
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                   <div>
@@ -724,18 +842,33 @@ const FormBuilder: React.FC = () => {
                               </div>
                             </div>
                             {(field.type === 'select' || field.type === 'multiselect') && (
-                              <div>
-                                <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
-                                  Seçenekler Listesi *
-                                </label>
-                                <p className={`text-xs mb-2 ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
-                                  Saha personelinin seçebileceği maddeleri ekleyin.
-                                </p>
-                                <OptionsManager
-                                  options={field.options || []}
-                                  onChange={(opts) => handleUpdateField(index, { options: opts })}
-                                  isDark={isDark}
-                                />
+                              <div className="space-y-4">
+                                <div>
+                                  <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                                    Seçenekler Listesi *
+                                  </label>
+                                  <p className={`text-xs mb-2 ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
+                                    Saha personelinin seçebileceği maddeleri ekleyin.
+                                  </p>
+                                  <OptionsManager
+                                    options={field.options || []}
+                                    onChange={(opts) => handleUpdateField(index, { options: opts })}
+                                    isDark={isDark}
+                                  />
+                                </div>
+                                {field.type === 'select' && (field.options || []).length > 0 && (
+                                  <div>
+                                    <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                                      Alt Kategoriler (Opsiyonel)
+                                    </label>
+                                    <SubOptionsManager
+                                      parentOptions={field.options || []}
+                                      subOptions={field.subOptions || {}}
+                                      onChange={(so) => handleUpdateField(index, { subOptions: so })}
+                                      isDark={isDark}
+                                    />
+                                  </div>
+                                )}
                               </div>
                             )}
                             <div>

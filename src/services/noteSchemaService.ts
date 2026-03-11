@@ -11,16 +11,41 @@ import { NoteSchema, FormField } from '../types';
 const SYSTEM_SETTINGS_COLLECTION = 'system_settings';
 const NOTE_SCHEMA_DOC_ID = 'note_schema';
 
-/** Default schema for backward compatibility with existing forms */
+/** Default schema for the note form */
 export const DEFAULT_NOTE_SCHEMA: NoteSchema = {
   fields: [
-    { id: 'category', label: 'Kategori', type: 'select', required: true, options: ['Kaba İşler', 'İnce İşler', 'Elektrik', 'Mekanik', 'Peyzaj', 'İSG'], order: 0 },
-    { id: 'date', label: 'Yapılan Tarih', type: 'date', required: true, order: 1 },
-    { id: 'ada', label: 'Ada', type: 'text', required: false, placeholder: 'Örn: 123', order: 2 },
-    { id: 'parsel', label: 'Parsel', type: 'text', required: false, placeholder: 'Örn: 5', order: 3 },
-    { id: 'progressLevel', label: 'Hakediş / Seviye', type: 'text', required: false, placeholder: 'Örn: %50, Zemin Kat', order: 4 }
+    { id: 'ada_parsel', label: 'Ada/Parsel', type: 'text', required: false, placeholder: 'Örn: 123/5', order: 0 },
+    {
+      id: 'kategori',
+      label: 'Kategori',
+      type: 'select',
+      required: true,
+      options: [
+        'OSB Genel', 'Veri Raporu', 'Geoteknik Raporu', 'Zemin İyileştirme',
+        'İksa Projesi', 'Saha Testleri', 'Saha Uygulaması', 'OSB Toplantısı', 'Arazi Kontrolü'
+      ],
+      subOptions: {
+        'OSB Genel': [],
+        'Veri Raporu': [],
+        'Geoteknik Raporu': [],
+        'Zemin İyileştirme': [],
+        'İksa Projesi': [],
+        'Saha Testleri': [],
+        'Saha Uygulaması': [],
+        'OSB Toplantısı': [],
+        'Arazi Kontrolü': []
+      },
+      order: 1,
+      showInTable: true,
+      showInFilter: true
+    },
+    { id: 'alt_kategori', label: 'Alt Kategori', type: 'select', required: false, options: [], order: 2, showInTable: true },
+    { id: 'tarih', label: 'Tarih', type: 'date', required: true, order: 3 },
+    { id: 'konu', label: 'Konu', type: 'text', required: false, placeholder: 'Konu başlığı', order: 4 },
+    { id: 'not_mail_kopyasi', label: 'Not/Mail Kopyası', type: 'textarea', required: false, placeholder: 'Not veya mail içeriği...', order: 5 },
+    { id: 'cevap', label: 'Cevap', type: 'textarea', required: false, placeholder: 'Cevap yazınız...', order: 6 }
   ],
-  version: 1
+  version: 2
 };
 
 /** Turkish char to ASCII mapping for slug generation */

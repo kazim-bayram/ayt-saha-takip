@@ -17,7 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNotes } from '../hooks/useNotes';
 import { useNoteSchema } from '../hooks/useNoteSchema';
-import { Note, FilterOptions, NoteFormData, getNoteFieldValue } from '../types';
+import { Note, FilterOptions, NoteFormData, getNoteFieldValue, NoteStatus, NOTE_STATUS_CONFIG } from '../types';
 import NoteCard from './NoteCard';
 import NoteDetailModal from './NoteDetailModal';
 import AddNoteModal from './AddNoteModal';
@@ -359,8 +359,9 @@ const Dashboard: React.FC = () => {
                       }`}
                     >
                       <option value="">Tümü</option>
-                      <option value="Eksik">🔴 Eksik</option>
+                      <option value="Beklemede">🟡 Beklemede</option>
                       <option value="Onay">🟢 Onay</option>
+                      <option value="Olumsuz Sonuç">🔴 Olumsuz Sonuç</option>
                     </select>
                     <ChevronDown className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${isDark ? 'text-concrete-500' : 'text-gray-400'}`} />
                   </div>
@@ -503,7 +504,7 @@ const Dashboard: React.FC = () => {
                   )}
                   {filters.status && (
                     <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${isDark ? 'bg-slate-700 text-white' : 'bg-white text-gray-700 shadow-sm'}`}>
-                      {filters.status === 'Eksik' ? '🔴' : '🟢'} {filters.status}
+                      {NOTE_STATUS_CONFIG[filters.status as NoteStatus]?.emoji ?? '🟡'} {filters.status}
                       <button onClick={() => setFilters({ ...filters, status: '' })} className="hover:text-red-400 ml-1">
                         <X className="w-3 h-3" />
                       </button>

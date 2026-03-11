@@ -168,6 +168,7 @@ export const useWeeklyPlan = () => {
         assignedTo: data.assignedTo,
         createdAt: now,
         updatedAt: now,
+        priority: data.priority || 'Normal',
         dependencies: data.dependencies || [],
         estimatedHours: data.estimatedHours || 0,
         actualHours: data.actualHours || 0,

@@ -12,7 +12,8 @@ import {
   XCircle,
   Loader2,
   Layers,
-  MessageSquare
+  MessageSquare,
+  Clock
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { Note, NoteStatus, NOTE_STATUS_CONFIG, getNoteImages, normalizeStatus, getWorkDate, formatWorkDate, getNoteFieldValue } from '../types';
@@ -115,9 +116,11 @@ const NoteCard: React.FC<NoteCardProps> = ({
     switch (status) {
       case 'Onay':
         return <CheckCircle2 className="w-3.5 h-3.5" />;
-      case 'Eksik':
-      default:
+      case 'Olumsuz Sonuç':
         return <XCircle className="w-3.5 h-3.5" />;
+      case 'Beklemede':
+      default:
+        return <Clock className="w-3.5 h-3.5" />;
     }
   };
 

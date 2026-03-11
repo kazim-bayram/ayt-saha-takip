@@ -2,16 +2,17 @@ import { Timestamp } from 'firebase/firestore';
 
 export type UserRole = 'admin' | 'worker';
 
-// Note status workflow (QA/QC approval)
-export type NoteStatus = 'Eksik' | 'Onay';
+// Note status workflow
+export type NoteStatus = 'Onay' | 'Olumsuz Sonuç' | 'Beklemede';
 
 // Legacy status types for backward compatibility
-export type LegacyNoteStatus = 'open' | 'in_progress' | 'resolved' | 'rejected';
+export type LegacyNoteStatus = 'open' | 'in_progress' | 'resolved' | 'rejected' | 'Eksik';
 
-// Normalize legacy statuses to new Eksik/Onay system
+// Normalize legacy statuses to new system
 export const normalizeStatus = (status: string | undefined): NoteStatus => {
   if (status === 'Onay' || status === 'resolved') return 'Onay';
-  return 'Eksik'; // Default: open, in_progress, rejected, undefined → Eksik
+  if (status === 'Olumsuz Sonuç' || status === 'rejected') return 'Olumsuz Sonuç';
+  return 'Beklemede';
 };
 
 export interface StatusConfig {
@@ -28,17 +29,17 @@ export interface StatusConfig {
 }
 
 export const NOTE_STATUS_CONFIG: Record<NoteStatus, StatusConfig> = {
-  Eksik: {
-    key: 'Eksik',
-    label: 'Eksik',
-    emoji: '🔴',
-    color: 'red',
-    bgLight: 'bg-red-100',
-    bgDark: 'bg-red-600/20',
-    textLight: 'text-red-700',
-    textDark: 'text-red-300',
-    borderLight: 'border-red-300',
-    borderDark: 'border-red-600'
+  Beklemede: {
+    key: 'Beklemede',
+    label: 'Beklemede',
+    emoji: '🟡',
+    color: 'yellow',
+    bgLight: 'bg-amber-100',
+    bgDark: 'bg-amber-600/20',
+    textLight: 'text-amber-700',
+    textDark: 'text-amber-300',
+    borderLight: 'border-amber-300',
+    borderDark: 'border-amber-600'
   },
   Onay: {
     key: 'Onay',
@@ -51,6 +52,18 @@ export const NOTE_STATUS_CONFIG: Record<NoteStatus, StatusConfig> = {
     textDark: 'text-green-300',
     borderLight: 'border-green-300',
     borderDark: 'border-green-600'
+  },
+  'Olumsuz Sonuç': {
+    key: 'Olumsuz Sonuç',
+    label: 'Olumsuz Sonuç',
+    emoji: '🔴',
+    color: 'red',
+    bgLight: 'bg-red-100',
+    bgDark: 'bg-red-600/20',
+    textLight: 'text-red-700',
+    textDark: 'text-red-300',
+    borderLight: 'border-red-300',
+    borderDark: 'border-red-600'
   }
 };
 
@@ -81,6 +94,7 @@ export interface FormField {
   type: FormFieldType;
   required: boolean;
   options?: string[];     // For 'select' and 'multiselect' types
+  subOptions?: Record<string, string[]>; // Maps parent option -> child sub-categories
   order: number;
   placeholder?: string;   // Helper text inside inputs
   description?: string;   // Small info text below the input
@@ -116,7 +130,6 @@ export interface Note {
   // --- New schema-driven dynamic data bag ---
   /** Stores values keyed by FormField.id (schema-driven notes) */
   data?: Record<string, any>;
-  // Status workflow (QA/QC: Eksik | Onay)
   status: NoteStatus;
   // Comments/Feedback system
   comments?: Comment[];
@@ -145,7 +158,7 @@ export interface NoteFormData {
   ada?: string;
   parsel?: string;
   progressLevel?: string;
-  status: NoteStatus;     // Eksik | Onay
+  status: NoteStatus;
   customFields?: CustomField[];
   images: File[];
   /** Schema-driven dynamic field values (keyed by FormField.id) */
@@ -164,12 +177,15 @@ export interface NoteFormDataDynamic {
 
 // Suggested category options for AddNoteModal
 export const CATEGORY_OPTIONS = [
-  'Kaba İşler',
-  'İnce İşler',
-  'Elektrik',
-  'Mekanik',
-  'Peyzaj',
-  'İSG'
+  'OSB Genel',
+  'Veri Raporu',
+  'Geoteknik Raporu',
+  'Zemin İyileştirme',
+  'İksa Projesi',
+  'Saha Testleri',
+  'Saha Uygulaması',
+  'OSB Toplantısı',
+  'Arazi Kontrolü'
 ];
 
 // Helper: get work date for display (date or createdAt fallback for legacy notes)
@@ -222,7 +238,7 @@ export interface FilterOptions {
   ada: string;
   parsel: string;
   progressLevel: string;  // Hakediş / Seviye filter
-  status: string;  // '' | 'Eksik' | 'Onay'
+  status: string;
   dateFrom: string;
   dateTo: string;
 }
@@ -249,6 +265,8 @@ export type TaskCategoryColor =
   | 'bg-red-100 text-red-800'
   | 'bg-purple-100 text-purple-800';
 
+export type TaskPriority = 'Düşük' | 'Normal' | 'Yüksek' | 'Kritik';
+
 export interface WeeklyTask {
   id: string;
   projectId: string;
@@ -261,6 +279,8 @@ export interface WeeklyTask {
   assignedTo: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+
+  priority?: TaskPriority;
 
   /** Finish-to-Start dependency: IDs of tasks that must complete before this one starts */
   dependencies?: string[];
@@ -322,14 +342,25 @@ export interface TimelineItem {
 /** Map a legacy note to a TimelineItem so it can appear on the Kanban/calendar */
 export const noteToTimelineItem = (note: Note): TimelineItem => {
   const date = note.createdAt?.toDate?.() ?? new Date();
+  const ns = normalizeStatus(note.status);
+  const statusMap: Record<NoteStatus, TaskStatus> = {
+    Onay: 'Tamamlandı',
+    Beklemede: 'Bekliyor',
+    'Olumsuz Sonuç': 'Devam Ediyor',
+  };
+  const colorMap: Record<NoteStatus, TaskCategoryColor> = {
+    Onay: 'bg-green-100 text-green-800',
+    Beklemede: 'bg-yellow-100 text-yellow-800',
+    'Olumsuz Sonuç': 'bg-red-100 text-red-800',
+  };
   return {
     id: `note-${note.id}`,
     source: 'note',
     title: note.projectName || 'Saha Notu',
     description: note.content,
-    status: note.status === 'Onay' ? 'Tamamlandı' : 'Bekliyor',
+    status: statusMap[ns],
     date,
-    color: note.status === 'Onay' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800',
+    color: colorMap[ns],
     assignedTo: note.userName || note.userEmail,
     projectName: note.projectName,
     noteRef: note,
