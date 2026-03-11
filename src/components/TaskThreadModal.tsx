@@ -11,7 +11,9 @@ import {
   Shield,
   Clock,
   FileDown,
-  Check
+  Check,
+  Edit3,
+  Trash2,
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { useTheme } from '../contexts/ThemeContext';
@@ -261,11 +263,13 @@ interface TaskThreadModalProps {
   isOpen: boolean;
   onClose: () => void;
   onStatusChanged?: () => void;
+  onEditTask?: (task: WeeklyTask) => void;
+  onDeleteTask?: (taskId: string) => void;
 }
 
-const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose, onStatusChanged }) => {
+const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose, onStatusChanged, onEditTask, onDeleteTask }) => {
   const { isDark } = useTheme();
-  const { currentUser } = useAuth();
+  const { currentUser, isAdmin } = useAuth();
   const { getTaskMessages, addTaskMessage, updateTaskStatus, markRFIResponded } = useWeeklyPlan();
 
   const [messages, setMessages] = useState<TaskThreadMessage[]>([]);
@@ -395,6 +399,26 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
                   <Loader2 className={`w-3.5 h-3.5 animate-spin ${isDark ? 'text-concrete-400' : 'text-gray-500'}`} />
                 )}
                 <span className="flex-1" />
+                {onEditTask && (
+                  <button
+                    onClick={() => onEditTask(task)}
+                    className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors ${isDark ? 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+                  >
+                    <Edit3 className="w-3 h-3" /> Düzenle
+                  </button>
+                )}
+                {onDeleteTask && isAdmin() && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Bu görevi silmek istediğinizden emin misiniz?')) {
+                        onDeleteTask(task.id);
+                      }
+                    }}
+                    className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors ${isDark ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
+                  >
+                    <Trash2 className="w-3 h-3" /> Sil
+                  </button>
+                )}
                 <button
                   onClick={() => generateThreadPDF(task, messages)}
                   className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors ${isDark ? 'bg-slate-800 text-concrete-300 hover:bg-slate-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}

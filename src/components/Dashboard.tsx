@@ -701,7 +701,17 @@ const Dashboard: React.FC = () => {
           setShowDetailModal(false);
           handleEditNote(note);
         }}
+        onDelete={async (note) => {
+          try {
+            await deleteNote(note);
+            setShowDetailModal(false);
+            setSelectedNote(null);
+          } catch (err) {
+            console.error('Not silinirken hata:', err);
+          }
+        }}
         canEdit={selectedNote ? canEditNote(selectedNote) : false}
+        canDelete={selectedNote ? canDeleteNote(selectedNote) : false}
       />
 
     </div>

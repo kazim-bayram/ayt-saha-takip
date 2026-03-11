@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   getDocs,
   orderBy,
@@ -19,7 +20,7 @@ import { db, storage } from '../firebase/config';
 import { WeeklyTask, TaskStatus, TaskThreadMessage, Note } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
-export type CreateTaskInput = Omit<WeeklyTask, 'id' | 'createdAt' | 'updatedAt'>;
+export type CreateTaskInput = Omit<WeeklyTask, 'id' | 'createdAt' | 'updatedAt' | 'authorId' | 'involvedUsers' | 'lastEditedBy'>;
 
 export interface AddMessageInput {
   content: string;
@@ -31,7 +32,7 @@ export interface AddMessageInput {
 }
 
 export const useWeeklyPlan = () => {
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userProfile, isAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,15 +56,25 @@ export const useWeeklyPlan = () => {
   );
 
   // ---------------------------------------------------------------------------
-  // Tasks CRUD (with resilient error handling)
+  // Tasks CRUD — role-based
   // ---------------------------------------------------------------------------
 
   const getAllTasks = useCallback(async (): Promise<WeeklyTask[]> => {
+    if (!currentUser || !userProfile) return [];
     setLoading(true);
     setError(null);
     try {
       const tasksRef = collection(db, 'weekly_tasks');
-      const q = query(tasksRef, orderBy('createdAt', 'asc'));
+      let q;
+      if (isAdmin) {
+        q = query(tasksRef, orderBy('createdAt', 'asc'));
+      } else {
+        q = query(
+          tasksRef,
+          where('involvedUsers', 'array-contains', currentUser.uid),
+          orderBy('createdAt', 'asc')
+        );
+      }
       const snapshot = await getDocs(q);
       const tasks = snapshot.docs.map((d) => ({
         id: d.id,
@@ -77,7 +88,7 @@ export const useWeeklyPlan = () => {
       setLoading(false);
       return [];
     }
-  }, []);
+  }, [currentUser, userProfile, isAdmin]);
 
   /** Fetch notes for cross-data integration */
   const getNotes = useCallback(async (): Promise<Note[]> => {
@@ -98,41 +109,45 @@ export const useWeeklyPlan = () => {
   /** Get tasks for a month range (for monthly calendar) */
   const getTasksByMonth = useCallback(
     async (year: number, month: number): Promise<WeeklyTask[]> => {
-      setLoading(true);
-      setError(null);
-      try {
-        const tasksRef = collection(db, 'weekly_tasks');
-        const q = query(tasksRef, orderBy('createdAt', 'asc'));
-        const snapshot = await getDocs(q);
-        const allTasks: WeeklyTask[] = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as Omit<WeeklyTask, 'id'>)
-        }));
-
-        const filtered = allTasks.filter(t => {
-          const d = t.createdAt?.toDate?.();
-          if (!d) return false;
-          return d.getFullYear() === year && d.getMonth() === month;
-        });
-        setLoading(false);
-        return filtered;
-      } catch (err) {
-        console.error('Error fetching monthly tasks:', err);
-        setError('Aylık görevler yüklenirken bir hata oluştu.');
-        setLoading(false);
-        return [];
-      }
+      const all = await getAllTasks();
+      return all.filter(t => {
+        const d = t.createdAt?.toDate?.();
+        if (!d) return false;
+        return d.getFullYear() === year && d.getMonth() === month;
+      });
     },
-    []
+    [getAllTasks]
   );
 
+  // ---------------------------------------------------------------------------
+  // Build involvedUsers from author + assignedTo
+  // ---------------------------------------------------------------------------
+
+  function buildInvolvedUsers(authorUid: string, assignedTo: string, allUsers?: { uid: string; displayName: string; username: string }[]): string[] {
+    const set = new Set<string>();
+    set.add(authorUid);
+    if (assignedTo && allUsers) {
+      const matched = allUsers.find(
+        (u) => u.displayName === assignedTo || u.username === assignedTo
+      );
+      if (matched) set.add(matched.uid);
+    }
+    return Array.from(set);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Create
+  // ---------------------------------------------------------------------------
+
   const createTask = useCallback(
-    async (data: CreateTaskInput): Promise<string> => {
+    async (data: CreateTaskInput, allUsers?: { uid: string; displayName: string; username: string }[]): Promise<string> => {
       if (!currentUser || !userProfile) {
         throw new Error('User not authenticated');
       }
       setError(null);
       const now = Timestamp.now();
+      const involved = buildInvolvedUsers(currentUser.uid, data.assignedTo, allUsers);
+
       const payload: Omit<WeeklyTask, 'id'> = {
         projectId: data.projectId,
         title: data.title,
@@ -141,6 +156,8 @@ export const useWeeklyPlan = () => {
         targetDate: data.targetDate,
         color: data.color,
         assignedTo: data.assignedTo,
+        authorId: currentUser.uid,
+        involvedUsers: involved,
         createdAt: now,
         updatedAt: now,
         priority: data.priority || 'Normal',
@@ -160,12 +177,15 @@ export const useWeeklyPlan = () => {
   );
 
   // ---------------------------------------------------------------------------
-  // Status change + automatic system_log
+  // Update (generic partial)
   // ---------------------------------------------------------------------------
 
-  /** Update any task fields by taskId. Uses updateDoc for partial updates. */
   const updateTask = useCallback(
-    async (taskId: string, updateData: Partial<Omit<WeeklyTask, 'id' | 'createdAt'>>): Promise<void> => {
+    async (
+      taskId: string,
+      updateData: Partial<Omit<WeeklyTask, 'id' | 'createdAt'>>,
+      allUsers?: { uid: string; displayName: string; username: string }[]
+    ): Promise<void> => {
       if (!currentUser || !userProfile) {
         throw new Error('User not authenticated');
       }
@@ -175,7 +195,16 @@ export const useWeeklyPlan = () => {
         const filtered = Object.fromEntries(
           Object.entries(updateData).filter(([, v]) => v !== undefined)
         ) as Record<string, unknown>;
-        await updateDoc(taskRef, { ...filtered, updatedAt: Timestamp.now() });
+
+        filtered.updatedAt = Timestamp.now();
+        filtered.lastEditedBy = currentUser.uid;
+
+        if (updateData.assignedTo !== undefined && allUsers) {
+          const authorId = (updateData as any).authorId || currentUser.uid;
+          filtered.involvedUsers = buildInvolvedUsers(authorId, updateData.assignedTo, allUsers);
+        }
+
+        await updateDoc(taskRef, filtered);
       } catch (err) {
         console.error('Error updating task:', err);
         setError('Görev güncellenemedi.');
@@ -184,6 +213,31 @@ export const useWeeklyPlan = () => {
     },
     [currentUser, userProfile]
   );
+
+  // ---------------------------------------------------------------------------
+  // Delete
+  // ---------------------------------------------------------------------------
+
+  const deleteTask = useCallback(
+    async (taskId: string): Promise<void> => {
+      if (!currentUser || !userProfile) {
+        throw new Error('User not authenticated');
+      }
+      setError(null);
+      try {
+        await deleteDoc(doc(db, 'weekly_tasks', taskId));
+      } catch (err) {
+        console.error('Error deleting task:', err);
+        setError('Görev silinemedi.');
+        throw err;
+      }
+    },
+    [currentUser, userProfile]
+  );
+
+  // ---------------------------------------------------------------------------
+  // Status change + automatic system_log
+  // ---------------------------------------------------------------------------
 
   const updateTaskStatus = useCallback(
     async (taskId: string, newStatus: TaskStatus, previousStatus?: TaskStatus): Promise<void> => {
@@ -195,7 +249,8 @@ export const useWeeklyPlan = () => {
         const taskRef = doc(db, 'weekly_tasks', taskId);
         await updateDoc(taskRef, {
           status: newStatus,
-          updatedAt: Timestamp.now()
+          updatedAt: Timestamp.now(),
+          lastEditedBy: currentUser.uid,
         });
 
         const fromLabel = previousStatus ?? '?';
@@ -285,7 +340,6 @@ export const useWeeklyPlan = () => {
     [currentUser, userProfile, uploadTaskImages]
   );
 
-  /** Mark an existing RFI message as responded */
   const markRFIResponded = useCallback(
     async (messageId: string): Promise<void> => {
       const msgRef = doc(db, 'task_messages', messageId);
@@ -302,6 +356,7 @@ export const useWeeklyPlan = () => {
     getNotes,
     createTask,
     updateTask,
+    deleteTask,
     updateTaskStatus,
     getTaskMessages,
     addTaskMessage,

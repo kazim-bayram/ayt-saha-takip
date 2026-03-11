@@ -277,8 +277,13 @@ export interface WeeklyTask {
   targetDate: string;
   color: TaskCategoryColor;
   assignedTo: string;
+  /** UID of the user who created this task */
+  authorId?: string;
+  /** UIDs involved (author + assignee) for Firestore RBAC array-contains queries */
+  involvedUsers?: string[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  lastEditedBy?: string;
 
   priority?: TaskPriority;
 
@@ -286,15 +291,10 @@ export interface WeeklyTask {
   category?: string;
   subCategory?: string;
 
-  /** Finish-to-Start dependency: IDs of tasks that must complete before this one starts */
   dependencies?: string[];
-  /** Actual effort logged */
   actualHours?: number;
-  /** Material cost in TRY */
   materialCosts?: number;
-  /** Planned start date (ISO string) for Gantt/timeline */
   plannedStart?: string;
-  /** Planned end date (ISO string) for Gantt/timeline */
   plannedEnd?: string;
 }
 

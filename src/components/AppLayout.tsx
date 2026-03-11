@@ -63,7 +63,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, onOpenProfileSettings, 
                 AYT Mühendislik
               </h1>
               <p className={`text-[10px] font-medium tracking-wider uppercase ${isDark ? 'text-safety-orange' : 'text-safety-orange-dark'}`}>
-                Proje Yönetim OS
+                Yalova Saha Takip Sistemi
               </p>
             </div>
           )}

@@ -2,14 +2,17 @@ import { useMemo } from 'react';
 import { WeeklyTask, Note, normalizeStatus } from '../types';
 
 export interface ProjectAnalytics {
-  spiValue: number;
-  spiLabel: string;
-  totalPlannedHours: number;
-  totalActualHours: number;
-  totalMaterialCosts: number;
+  completionPace: number;
   completedTasks: number;
+  totalTasks: number;
   inProgressTasks: number;
   waitingTasks: number;
+
+  activeThreadCount: number;
+
+  delayedTasks: number;
+  delayedTaskList: WeeklyTask[];
+
   bottleneckWorkers: { name: string; count: number; staleDays: number }[];
   noteStats: { total: number; beklemede: number; onay: number; olumsuz: number };
 }
@@ -23,19 +26,22 @@ export const useProjectAnalytics = (
     const inProgressTasks = tasks.filter(t => t.status === 'Devam Ediyor').length;
     const waitingTasks = tasks.filter(t => t.status === 'Bekliyor').length;
 
-    const totalActualHours = tasks.reduce((sum, t) => sum + (t.actualHours || 0), 0);
-    const totalMaterialCosts = tasks.reduce((sum, t) => sum + (t.materialCosts || 0), 0);
+    const completionPace = tasks.length > 0
+      ? Math.round((completedTasks / tasks.length) * 100)
+      : 0;
 
-    // SPI based on task completion ratio
-    const totalPlannedHours = totalActualHours || tasks.length;
-    const spiValue = tasks.length > 0 ? completedTasks / tasks.length : 0;
+    const todayISO = new Date().toISOString().slice(0, 10);
+    const delayedTaskList = tasks.filter(
+      t => t.targetDate && t.targetDate < todayISO && t.status !== 'Tamamlandı'
+    );
 
-    let spiLabel: string;
-    if (spiValue >= 1) spiLabel = 'Planın Önünde';
-    else if (spiValue >= 0.8) spiLabel = 'Plana Yakın';
-    else spiLabel = 'Geride';
+    const activeThreadCount = tasks.filter(t => {
+      const updated = t.updatedAt?.toDate?.();
+      if (!updated) return false;
+      const daysSinceUpdate = (Date.now() - updated.getTime()) / (1000 * 60 * 60 * 24);
+      return daysSinceUpdate <= 7 && t.status !== 'Tamamlandı';
+    }).length;
 
-    // Bottleneck: workers with the most 'Devam Ediyor' tasks stale for >5 days
     const now = Date.now();
     const workerMap = new Map<string, { count: number; maxStale: number }>();
 
@@ -64,14 +70,14 @@ export const useProjectAnalytics = (
     };
 
     return {
-      spiValue,
-      spiLabel,
-      totalPlannedHours,
-      totalActualHours,
-      totalMaterialCosts,
+      completionPace,
       completedTasks,
+      totalTasks: tasks.length,
       inProgressTasks,
       waitingTasks,
+      activeThreadCount,
+      delayedTasks: delayedTaskList.length,
+      delayedTaskList,
       bottleneckWorkers,
       noteStats,
     };

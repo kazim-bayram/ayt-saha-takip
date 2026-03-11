@@ -55,33 +55,46 @@ service cloud.firestore {
     
     // Notes collection rules
     match /notes/{noteId} {
-      // Workers can only read their own notes
-      // Admins can read all notes
       allow read: if isAuthenticated() && 
                      (resource.data.userId == request.auth.uid || isAdmin());
       
-      // Workers can create notes (must include their own userId)
       allow create: if isAuthenticated() && 
                        request.resource.data.userId == request.auth.uid;
       
-      // Workers can update their own notes (must keep same userId)
       allow update: if isAuthenticated() && 
                        resource.data.userId == request.auth.uid &&
                        request.resource.data.userId == request.auth.uid;
       
-      // Admins can update any note (for status changes, comments, etc.)
       allow update: if isAdmin();
       
-      // Any authenticated user can add comments to any note
-      // This allows workers to respond to admin feedback on their notes
       allow update: if isAuthenticated() && 
                        request.resource.data.userId == resource.data.userId &&
                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comments', 'updatedAt']);
       
-      // Workers can delete their own notes
-      // Admins can delete any note
       allow delete: if isAuthenticated() && 
                        (resource.data.userId == request.auth.uid || isAdmin());
+    }
+    
+    // Weekly tasks — RBAC via involvedUsers array
+    match /weekly_tasks/{taskId} {
+      allow read: if isAuthenticated() &&
+                     (isAdmin() || request.auth.uid in resource.data.involvedUsers);
+      
+      allow create: if isAuthenticated();
+      
+      allow update: if isAuthenticated() &&
+                       (isAdmin() || request.auth.uid in resource.data.involvedUsers);
+      
+      allow delete: if isAdmin();
+    }
+    
+    // Task thread messages
+    match /task_messages/{messageId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() &&
+                       (isAdmin() || resource.data.authorId == request.auth.uid);
+      allow delete: if isAdmin();
     }
     
   }

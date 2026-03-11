@@ -82,7 +82,7 @@ const TablePage: React.FC = () => {
     updateNote, deleteNote, addComment, deleteComment, canEditNote, canDeleteNote,
   } = useNotes();
 
-  const { getAllTasks } = useWeeklyPlan();
+  const { getAllTasks, deleteTask } = useWeeklyPlan();
   const [tasks, setTasks] = useState<WeeklyTask[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
 
@@ -521,7 +521,15 @@ const TablePage: React.FC = () => {
         onAddComment={addComment}
         onDeleteComment={deleteComment}
         onEdit={handleEditNote}
+        onDelete={async (note) => {
+          try {
+            await deleteNote(note);
+            setSelectedNote(null);
+            setIsDetailModalOpen(false);
+          } catch { /* handled */ }
+        }}
         canEdit={selectedNote ? canEditNote(selectedNote) : false}
+        canDelete={selectedNote ? canDeleteNote(selectedNote) : false}
       />
       <AddNoteModal
         isOpen={showAddModal}
@@ -534,6 +542,13 @@ const TablePage: React.FC = () => {
         isOpen={!!threadTask}
         onClose={() => setThreadTask(null)}
         onStatusChanged={refreshTasks}
+        onDeleteTask={async (taskId) => {
+          try {
+            await deleteTask(taskId);
+            setThreadTask(null);
+            await refreshTasks();
+          } catch { /* handled */ }
+        }}
       />
     </div>
   );

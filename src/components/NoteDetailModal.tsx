@@ -37,7 +37,9 @@ interface NoteDetailModalProps {
   onAddComment?: (noteId: string, text: string) => Promise<Comment | null>;
   onDeleteComment?: (noteId: string, commentId: string) => Promise<void>;
   onEdit?: (note: Note) => void;
+  onDelete?: (note: Note) => void;
   canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ 
@@ -47,7 +49,9 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
   onAddComment,
   onDeleteComment,
   onEdit,
-  canEdit = false
+  onDelete,
+  canEdit = false,
+  canDelete = false
 }) => {
   const { isDark } = useTheme();
   const { currentUser, isAdmin } = useAuth();
@@ -212,6 +216,23 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
               >
                 <Edit3 className="w-4 h-4" />
                 Düzenle
+              </button>
+            )}
+            {canDelete && onDelete && (
+              <button
+                onClick={() => {
+                  if (window.confirm(`"${note.projectName || 'Bu not'}" silinsin mi?`)) {
+                    onDelete(note);
+                  }
+                }}
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  isDark 
+                    ? 'text-red-400 hover:text-red-300 hover:bg-red-500/10' 
+                    : 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                }`}
+              >
+                <Trash2 className="w-4 h-4" />
+                Sil
               </button>
             )}
             <button

@@ -10,16 +10,15 @@ import {
   ChevronDown,
   CheckCircle2,
   RefreshCw,
-  BarChart3,
   GanttChart,
   LayoutGrid,
   CalendarDays,
   ClipboardList,
   FileText,
   TrendingUp,
-  Clock,
   AlertTriangle,
-  DollarSign,
+  MessageSquare,
+  Clock,
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useWeeklyPlan, CreateTaskInput } from '../hooks/useWeeklyPlan';
@@ -300,54 +299,87 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
 const AnalyticsMiniDashboard: React.FC<{ tasks: WeeklyTask[]; notes: Note[]; isDark: boolean }> = ({ tasks, notes, isDark }) => {
   const analytics = useProjectAnalytics(tasks, notes);
 
-  const spiColor = analytics.spiValue >= 1 ? 'text-green-400' : analytics.spiValue >= 0.8 ? 'text-yellow-400' : 'text-red-400';
-  const spiBg = analytics.spiValue >= 1 ? 'bg-green-500/10 border-green-500/20' : analytics.spiValue >= 0.8 ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-red-500/10 border-red-500/20';
-  const cardClass = `rounded-xl border p-4 ${isDark ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-200'}`;
+  const pace = analytics.completionPace;
+  const paceColor = pace >= 80 ? 'text-green-500' : pace >= 50 ? 'text-yellow-500' : 'text-red-500';
+  const paceBg = pace >= 80
+    ? (isDark ? 'bg-green-500/10 border-green-500/20' : 'bg-green-50 border-green-200')
+    : pace >= 50
+      ? (isDark ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-yellow-50 border-yellow-200')
+      : (isDark ? 'bg-red-500/10 border-red-500/20' : 'bg-red-50 border-red-200');
+
+  const delayBg = analytics.delayedTasks > 0
+    ? (isDark ? 'bg-red-500/10 border-red-500/20' : 'bg-red-50 border-red-200')
+    : (isDark ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-200');
+
+  const cardBase = 'rounded-xl border p-4 transition-all';
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-      <div className={`rounded-xl border p-4 ${isDark ? spiBg : 'bg-white border-gray-200'}`}>
-        <div className="flex items-center gap-2 mb-1">
-          <TrendingUp className={`w-4 h-4 ${spiColor}`} />
-          <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>SPI</span>
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+      {/* İş Bitirme Hızı */}
+      <div className={`${cardBase} ${paceBg}`}>
+        <div className="flex items-center gap-2 mb-2">
+          <TrendingUp className={`w-4 h-4 ${paceColor}`} />
+          <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>
+            İş Bitirme Hızı
+          </span>
         </div>
-        <p className={`text-2xl font-bold ${spiColor}`}>{analytics.spiValue.toFixed(2)}</p>
-        <p className={`text-xs ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>{analytics.spiLabel}</p>
-      </div>
-      <div className={cardClass}>
-        <div className="flex items-center gap-2 mb-1">
-          <BarChart3 className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
-          <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>Görevler</span>
+        <div className="flex items-baseline gap-1.5">
+          <span className={`text-3xl font-bold tabular-nums ${paceColor}`}>%{pace}</span>
+          <span className={`text-xs ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>
+            ({analytics.completedTasks}/{analytics.totalTasks})
+          </span>
         </div>
-        <div className="flex items-baseline gap-1">
-          <span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{analytics.completedTasks}</span>
-          <span className={`text-xs ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>/ {tasks.length}</span>
+        <div className={`w-full h-1.5 rounded-full mt-2.5 ${isDark ? 'bg-white/10' : 'bg-black/5'}`}>
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${pace >= 80 ? 'bg-green-500' : pace >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
+            style={{ width: `${Math.min(pace, 100)}%` }}
+          />
         </div>
-        <div className="flex gap-2 mt-1">
-          <span className="text-[10px] text-yellow-400">{analytics.waitingTasks} bekliyor</span>
-          <span className="text-[10px] text-blue-400">{analytics.inProgressTasks} devam</span>
-        </div>
-      </div>
-      <div className={cardClass}>
-        <div className="flex items-center gap-2 mb-1">
-          <Clock className={`w-4 h-4 ${isDark ? 'text-purple-400' : 'text-purple-600'}`} />
-          <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>Saat</span>
-        </div>
-        <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{analytics.totalActualHours}h</p>
-        <p className={`text-xs ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>/ {analytics.totalPlannedHours}h planlı</p>
-      </div>
-      <div className={cardClass}>
-        <div className="flex items-center gap-2 mb-1">
-          <DollarSign className={`w-4 h-4 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
-          <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>Malzeme</span>
-        </div>
-        <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          {analytics.totalMaterialCosts > 0 ? `₺${analytics.totalMaterialCosts.toLocaleString('tr-TR')}` : '₺0'}
-        </p>
-        <p className={`text-xs ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>
-          Saha: {analytics.noteStats.total} not ({analytics.noteStats.onay} onaylı)
+        <p className={`text-[10px] mt-2 ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>
+          Planladığımız işlerin zamanında bitme oranı. %100 hedeftir.
         </p>
       </div>
+
+      {/* Bekleyen Mesajlar / Aktif Sohbetler */}
+      <div className={`${cardBase} ${isDark ? 'bg-slate-900/50 border-slate-700/50' : 'bg-white border-gray-200'}`}>
+        <div className="flex items-center gap-2 mb-2">
+          <MessageSquare className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+          <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>
+            Aktif Görevler
+          </span>
+        </div>
+        <span className={`text-3xl font-bold tabular-nums ${isDark ? 'text-white' : 'text-gray-900'}`}>{analytics.activeThreadCount}</span>
+        <div className="flex gap-3 mt-2">
+          <span className={`text-[10px] ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`}>{analytics.waitingTasks} bekliyor</span>
+          <span className={`text-[10px] ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{analytics.inProgressTasks} devam</span>
+        </div>
+        <p className={`text-[10px] mt-2 ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>
+          Görevlerin içinde yanıt bekleyen veya güncel saha yazışmaları.
+        </p>
+      </div>
+
+      {/* Geciken İşler */}
+      <div className={`${cardBase} ${delayBg}`}>
+        <div className="flex items-center gap-2 mb-2">
+          <Clock className={`w-4 h-4 ${analytics.delayedTasks > 0 ? 'text-red-500' : (isDark ? 'text-concrete-400' : 'text-gray-400')}`} />
+          <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>
+            Geciken İşler
+          </span>
+        </div>
+        <span className={`text-3xl font-bold tabular-nums ${analytics.delayedTasks > 0 ? 'text-red-500' : (isDark ? 'text-green-400' : 'text-green-600')}`}>
+          {analytics.delayedTasks}
+        </span>
+        {analytics.delayedTasks === 0 && (
+          <p className={`text-[10px] mt-2 ${isDark ? 'text-green-400/80' : 'text-green-600'}`}>Tüm görevler zamanında!</p>
+        )}
+        {analytics.delayedTasks > 0 && (
+          <p className={`text-[10px] mt-2 ${isDark ? 'text-red-400/80' : 'text-red-600'}`}>
+            Hedef tarihi geçtiği halde henüz tamamlanmamış görevler.
+          </p>
+        )}
+      </div>
+
+      {/* Bottleneck workers banner */}
       {analytics.bottleneckWorkers.length > 0 && (
         <div className={`col-span-full rounded-xl border p-3 flex items-center gap-3 ${isDark ? 'bg-red-500/10 border-red-500/20' : 'bg-red-50 border-red-200'}`}>
           <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
@@ -369,10 +401,10 @@ const AnalyticsMiniDashboard: React.FC<{ tasks: WeeklyTask[]; notes: Note[]; isD
 
 const ProjectConsole: React.FC = () => {
   const { isDark } = useTheme();
-  const { getAllTasks, createTask, updateTaskStatus } = useWeeklyPlan();
+  const { getAllTasks, createTask, updateTask, deleteTask, updateTaskStatus } = useWeeklyPlan();
   const {
-    notes: liveNotes, createNote, updateNote, uploadProgress,
-    addComment, deleteComment, canEditNote,
+    notes: liveNotes, createNote, updateNote, deleteNote, uploadProgress,
+    addComment, deleteComment, canEditNote, canDeleteNote,
   } = useNotes();
 
   const [pageLoading, setPageLoading] = useState(true);
@@ -388,6 +420,7 @@ const ProjectConsole: React.FC = () => {
 
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [editingTask, setEditingTask] = useState<WeeklyTask | null>(null);
 
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [calYear, setCalYear] = useState(new Date().getFullYear());
@@ -482,6 +515,27 @@ const ProjectConsole: React.FC = () => {
     await fetchTasks();
   }, [createTask, fetchTasks]);
 
+  const handleUpdateTask = useCallback(async (taskId: string, data: Partial<Omit<WeeklyTask, 'id' | 'createdAt'>>) => {
+    await updateTask(taskId, data);
+    await fetchTasks();
+  }, [updateTask, fetchTasks]);
+
+  const handleEditTask = useCallback((task: WeeklyTask) => {
+    setThreadTask(null);
+    setEditingTask(task);
+    setShowAddModal(true);
+  }, []);
+
+  const handleDeleteTask = useCallback(async (taskId: string) => {
+    try {
+      await deleteTask(taskId);
+      setThreadTask(null);
+      await fetchTasks();
+    } catch (err) {
+      console.error('Görev silinirken hata:', err);
+    }
+  }, [deleteTask, fetchTasks]);
+
   const handleTimelineItemClick = useCallback((item: TimelineItem) => {
     if (item.taskRef) setThreadTask(item.taskRef);
   }, []);
@@ -496,6 +550,15 @@ const ProjectConsole: React.FC = () => {
     setEditingNote(note);
     setShowAddNoteModal(true);
   }, []);
+
+  const handleDeleteNote = useCallback(async (note: Note) => {
+    try {
+      await deleteNote(note);
+      setSelectedNote(null);
+    } catch (err) {
+      console.error('Not silinirken hata:', err);
+    }
+  }, [deleteNote]);
 
   const handleSubmitNote = useCallback(async (formData: NoteFormData, existingImageUrls?: string[]) => {
     if (editingNote) {
@@ -675,7 +738,14 @@ const ProjectConsole: React.FC = () => {
       </div>
 
       {/* Modals */}
-      <AddTaskModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreateTask} isDark={isDark} />
+      <AddTaskModal
+        isOpen={showAddModal}
+        onClose={() => { setShowAddModal(false); setEditingTask(null); }}
+        onSubmit={handleCreateTask}
+        taskToEdit={editingTask}
+        onUpdate={handleUpdateTask}
+        isDark={isDark}
+      />
 
       <AddNoteModal
         isOpen={showAddNoteModal}
@@ -693,7 +763,9 @@ const ProjectConsole: React.FC = () => {
           onAddComment={addComment}
           onDeleteComment={deleteComment}
           onEdit={handleEditNote}
+          onDelete={handleDeleteNote}
           canEdit={canEditNote(selectedNote)}
+          canDelete={canDeleteNote(selectedNote)}
         />
       )}
 
@@ -702,6 +774,8 @@ const ProjectConsole: React.FC = () => {
         isOpen={!!threadTask}
         onClose={() => setThreadTask(null)}
         onStatusChanged={fetchTasks}
+        onEditTask={handleEditTask}
+        onDeleteTask={handleDeleteTask}
       />
     </div>
   );

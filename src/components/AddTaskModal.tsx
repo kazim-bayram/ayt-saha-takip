@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Plus, X, Loader2, AlertCircle,
+  Plus, X, Loader2, AlertCircle, Check,
   Flag, User, CalendarDays, Briefcase,
-  FileText, Palette, MapPin, Tag,
+  FileText, Palette, MapPin, Tag, Edit3,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  TaskCategoryColor, TaskPriority, UserProfile, CATEGORY_OPTIONS,
+  TaskCategoryColor, TaskPriority, TaskStatus, UserProfile, WeeklyTask,
+  CATEGORY_OPTIONS,
 } from '../types';
 import { CreateTaskInput } from '../hooks/useWeeklyPlan';
 
@@ -25,6 +26,8 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string; dot: string; ring:
   { value: 'Kritik', label: 'Kritik', dot: 'bg-red-600',    ring: 'ring-red-400' },
 ];
 
+const STATUS_OPTIONS: TaskStatus[] = ['Bekliyor', 'Devam Ediyor', 'Tamamlandı'];
+
 function todayISO(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -34,6 +37,10 @@ interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: CreateTaskInput) => Promise<void>;
+  /** When provided, the modal opens in edit mode and pre-fills all fields */
+  taskToEdit?: WeeklyTask | null;
+  /** Called when in edit mode */
+  onUpdate?: (taskId: string, data: Partial<Omit<WeeklyTask, 'id' | 'createdAt'>>) => Promise<void>;
   isDark: boolean;
 }
 
@@ -41,9 +48,13 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
+  taskToEdit,
+  onUpdate,
   isDark,
 }) => {
   const { getAllUsers } = useAuth();
+
+  const isEditMode = !!taskToEdit;
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -51,22 +62,41 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [assignedTo, setAssignedTo] = useState('');
   const [color, setColor] = useState<TaskCategoryColor>('bg-blue-100 text-blue-800');
   const [priority, setPriority] = useState<TaskPriority>('Normal');
+  const [status, setStatus] = useState<TaskStatus>('Bekliyor');
   const [targetDate, setTargetDate] = useState(todayISO());
   const [adaParsel, setAdaParsel] = useState('');
   const [category, setCategory] = useState('');
   const [subCategory, setSubCategory] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
 
   useEffect(() => {
-    if (isOpen) {
-      setTargetDate(todayISO());
-      getAllUsers()
-        .then((u) => setUsers(u.filter((p) => p.isActive !== false)))
-        .catch(() => {});
+    if (!isOpen) return;
+
+    getAllUsers()
+      .then((u) => setUsers(u.filter((p) => p.isActive !== false)))
+      .catch(() => {});
+
+    if (taskToEdit) {
+      setTitle(taskToEdit.title || '');
+      setDescription(taskToEdit.description || '');
+      setProjectId(taskToEdit.projectId || '');
+      setAssignedTo(taskToEdit.assignedTo || '');
+      setColor(taskToEdit.color || 'bg-blue-100 text-blue-800');
+      setPriority(taskToEdit.priority || 'Normal');
+      setStatus(taskToEdit.status || 'Bekliyor');
+      setTargetDate(taskToEdit.targetDate || todayISO());
+      setAdaParsel(taskToEdit.adaParsel || '');
+      setCategory(taskToEdit.category || '');
+      setSubCategory(taskToEdit.subCategory || '');
+    } else {
+      resetForm();
     }
-  }, [isOpen, getAllUsers]);
+    setError(null);
+    setSuccessMsg(null);
+  }, [isOpen, taskToEdit, getAllUsers]);
 
   const isValid = useMemo(
     () => title.trim().length > 0 && targetDate.length > 0,
@@ -75,20 +105,22 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
   if (!isOpen) return null;
 
-  const resetForm = () => {
+  function resetForm() {
     setTitle('');
     setDescription('');
     setProjectId('');
     setAssignedTo('');
     setColor('bg-blue-100 text-blue-800');
     setPriority('Normal');
+    setStatus('Bekliyor');
     setTargetDate(todayISO());
     setAdaParsel('');
     setCategory('');
     setSubCategory('');
     setError(null);
     setSaving(false);
-  };
+    setSuccessMsg(null);
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,27 +130,46 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     }
     setSaving(true);
     setError(null);
+    setSuccessMsg(null);
     try {
-      await onSubmit({
-        title: title.trim(),
-        description: description.trim(),
-        projectId: projectId.trim(),
-        assignedTo: assignedTo.trim(),
-        color,
-        targetDate,
-        status: 'Bekliyor',
-        priority,
-        adaParsel: adaParsel.trim(),
-        category,
-        subCategory: subCategory.trim(),
-        plannedStart: '',
-        plannedEnd: '',
-        dependencies: [],
-        actualHours: 0,
-        materialCosts: 0,
-      });
-      resetForm();
-      onClose();
+      if (isEditMode && onUpdate && taskToEdit) {
+        await onUpdate(taskToEdit.id, {
+          title: title.trim(),
+          description: description.trim(),
+          projectId: projectId.trim(),
+          assignedTo: assignedTo.trim(),
+          color,
+          targetDate,
+          status,
+          priority,
+          adaParsel: adaParsel.trim(),
+          category,
+          subCategory: subCategory.trim(),
+        });
+        setSuccessMsg('Görev başarıyla güncellendi');
+        setTimeout(() => { resetForm(); onClose(); }, 800);
+      } else {
+        await onSubmit({
+          title: title.trim(),
+          description: description.trim(),
+          projectId: projectId.trim(),
+          assignedTo: assignedTo.trim(),
+          color,
+          targetDate,
+          status: 'Bekliyor',
+          priority,
+          adaParsel: adaParsel.trim(),
+          category,
+          subCategory: subCategory.trim(),
+          plannedStart: '',
+          plannedEnd: '',
+          dependencies: [],
+          actualHours: 0,
+          materialCosts: 0,
+        });
+        resetForm();
+        onClose();
+      }
     } catch (err: any) {
       setError(err.message || 'Bir hata oluştu');
     } finally {
@@ -156,11 +207,11 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           }`}
         >
           <div>
-            <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              Yeni Görev Oluştur
+            <h2 className={`text-lg font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              {isEditMode ? <><Edit3 className="w-5 h-5" /> Görevi Düzenle</> : 'Yeni Görev Oluştur'}
             </h2>
             <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
-              İş planına yeni bir görev ekleyin
+              {isEditMode ? 'Tüm alanları güncelleyebilirsiniz' : 'İş planına yeni bir görev ekleyin'}
             </p>
           </div>
           <button
@@ -184,6 +235,12 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
               <p className="text-red-400 text-sm">{error}</p>
             </div>
           )}
+          {successMsg && (
+            <div className="p-3 rounded-lg flex items-center gap-3 bg-green-500/10 border border-green-500/30">
+              <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+              <p className="text-green-400 text-sm">{successMsg}</p>
+            </div>
+          )}
 
           {/* Row 1 — Task Title (full width) */}
           <div>
@@ -199,7 +256,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
               className={inputClass}
               required
               disabled={saving}
-              autoFocus
+              autoFocus={!isEditMode}
             />
           </div>
 
@@ -334,8 +391,25 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
             </div>
           </div>
 
-          {/* Row 5 — Project + Color */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Row 5 — Status (only in edit mode) + Project + Color */}
+          <div className={`grid grid-cols-1 ${isEditMode ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-4`}>
+            {isEditMode && (
+              <div>
+                <label className={labelClass}>
+                  Durum
+                </label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as TaskStatus)}
+                  className={inputClass}
+                  disabled={saving}
+                >
+                  {STATUS_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className={labelClass}>
                 <FileText className="w-3.5 h-3.5" />
@@ -411,17 +485,21 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
             <button
               type="submit"
               disabled={saving || !isValid}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm py-2.5 px-5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className={`flex items-center gap-2 text-white font-semibold text-sm py-2.5 px-5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                isEditMode
+                  ? 'bg-emerald-600 hover:bg-emerald-700'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
             >
               {saving ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Oluşturuluyor...
+                  {isEditMode ? 'Güncelleniyor...' : 'Oluşturuluyor...'}
                 </>
               ) : (
                 <>
-                  <Plus className="w-4 h-4" />
-                  Görev Oluştur
+                  {isEditMode ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                  {isEditMode ? 'Görevi Güncelle' : 'Görev Oluştur'}
                 </>
               )}
             </button>
