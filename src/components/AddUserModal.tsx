@@ -78,8 +78,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserCrea
         throw new Error('Bu kullanıcı adı zaten kullanılıyor');
       }
 
-      // Generate email from username with @insaat.local domain
-      const email = `${username.toLowerCase()}@insaat.local`;
+      // Generate email from username with @ayt.local domain
+      const email = `${username.toLowerCase()}@ayt.local`;
 
       // Create a secondary Firebase app instance for authentication only
       const secondaryAppName = 'SecondaryApp';
@@ -270,7 +270,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserCrea
           {/* Info about automatic email generation */}
           <div className={`p-3 rounded-xl border ${isDark ? 'bg-blue-600/10 border-blue-500/30' : 'bg-blue-50 border-blue-200'}`}>
             <p className={`text-xs ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
-              <strong>Not:</strong> Kullanıcı adından otomatik olarak <code className="px-1 py-0.5 rounded bg-black/20">@insaat.local</code> uzantılı e-posta oluşturulacaktır.
+              <strong>Not:</strong> Kullanıcı adından otomatik olarak <code className="px-1 py-0.5 rounded bg-black/20">@ayt.local</code> uzantılı e-posta oluşturulacaktır.
             </p>
           </div>
 

@@ -20,7 +20,7 @@ All notable changes to this project will be documented in this file.
 
 **Authentication System:**
 - ✨ Username-only authentication (no visible email required)
-- ✨ Automatic `@insaat.local` domain appending
+- ✨ Automatic `@ayt.local` domain appending
 - ✨ `isActive` field in user profiles for soft delete
 - ✨ Automatic sign-out for disabled accounts
 - ✨ Login rejection for inactive users

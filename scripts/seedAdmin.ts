@@ -1,27 +1,34 @@
 /**
- * Admin Seed Script
- * 
- * This script sets a user as admin in Firestore.
- * 
+ * Admin Seed Script (AYT Mühendislik)
+ *
+ * This script creates the initial admin user for the AYT project.
+ *
+ * It will:
+ * - Create a Firebase Auth user with email "<USERNAME>@ayt.local"
+ * - Create a corresponding document in the "users" Firestore collection
+ *   with: role: "admin", isActive: true, mustChangePassword: false
+ *
  * Usage:
- * 1. First, register the user through the app normally
- * 2. Copy their UID from Firebase Console > Authentication > Users
- * 3. Run this script with the UID as an argument:
- *    
- *    npx ts-node scripts/seedAdmin.ts <USER_UID>
- * 
- * Alternative: Manually set in Firebase Console
- * 1. Go to Firebase Console > Firestore Database
- * 2. Navigate to users collection
- * 3. Find the user document (by UID)
- * 4. Change the 'role' field from 'worker' to 'admin'
+ *   npx ts-node scripts/seedAdmin.ts
+ *
+ * Requirements:
+ * - Place your Firebase Admin service account JSON as "serviceAccountKey.json"
+ *   in the "scripts" directory (same folder as this file)
+ * - Never commit that key to version control
  */
 
 import { initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+
+// Configuration for the initial admin
+const INITIAL_USERNAME = 'admin';
+const INITIAL_PASSWORD = 'AytAdmin2026!';
+const INITIAL_DISPLAY_NAME = 'Sistem Yöneticisi';
+const AUTH_DOMAIN = 'ayt.local';
 
 // You'll need to download your service account key from Firebase Console
 // Project Settings > Service Accounts > Generate New Private Key
@@ -38,47 +45,70 @@ initializeApp({
 });
 
 const db = getFirestore();
+const adminAuth = getAuth();
 
-async function setUserAsAdmin(userId: string): Promise<void> {
+async function seedInitialAdmin(): Promise<void> {
   try {
-    const userRef = db.collection('users').doc(userId);
-    const userDoc = await userRef.get();
+    const username = INITIAL_USERNAME.toLowerCase();
+    const email = `${username}@${AUTH_DOMAIN}`;
 
-    if (!userDoc.exists) {
-      console.error(`❌ User with ID "${userId}" not found in Firestore.`);
-      console.log('\nMake sure the user has registered and signed in at least once.');
-      process.exit(1);
+    // STEP 1: Create Auth user (or reuse if already exists)
+    let uid: string;
+    try {
+      const userRecord = await adminAuth.createUser({
+        email,
+        password: INITIAL_PASSWORD,
+        displayName: INITIAL_DISPLAY_NAME
+      });
+      uid = userRecord.uid;
+      console.log(`✅ Created Auth user for email: ${email}`);
+    } catch (error: any) {
+      if (error?.code === 'auth/email-already-exists') {
+        const existingUser = await adminAuth.getUserByEmail(email);
+        uid = existingUser.uid;
+        console.log(`ℹ️ Auth user already exists for email: ${email} (UID: ${uid})`);
+      } else {
+        throw error;
+      }
     }
 
-    await userRef.update({
-      role: 'admin'
-    });
+    // STEP 2: Create/Update Firestore user document
+    const userRef = db.collection('users').doc(uid);
+    const userDoc = await userRef.get();
 
-    const userData = userDoc.data();
-    console.log(`✅ Successfully set user as admin!`);
-    console.log(`   Email: ${userData?.email}`);
-    console.log(`   Name: ${userData?.displayName}`);
-    console.log(`   UID: ${userId}`);
+    const userData = {
+      uid,
+      email,
+      username,
+      displayName: INITIAL_DISPLAY_NAME,
+      role: 'admin',
+      isActive: true,
+      mustChangePassword: false,
+      createdAt: FieldValue.serverTimestamp()
+    };
+
+    if (userDoc.exists) {
+      await userRef.set(userData, { merge: true });
+      console.log('ℹ️ Updated existing Firestore user document as admin.');
+    } else {
+      await userRef.set(userData);
+      console.log('✅ Created Firestore user document for admin.');
+    }
+
+    console.log('\n🎉 Initial admin user is ready for login.');
+    console.log('----------------------------------------');
+    console.log(`   Username (for login screen): ${username}`);
+    console.log(`   Email (in Firebase Auth):    ${email}`);
+    console.log(`   Password:                    ${INITIAL_PASSWORD}`);
+    console.log('----------------------------------------');
+    console.log('\nUse the username (not the email) on the login screen. The app will automatically append "@ayt.local".');
   } catch (error) {
-    console.error('❌ Error setting user as admin:', error);
+    console.error('❌ Error seeding initial admin user:', error);
     process.exit(1);
   }
 }
 
-// Get user ID from command line arguments
-const userId = process.argv[2];
-
-if (!userId) {
-  console.error('❌ Please provide a user ID as an argument.');
-  console.log('\nUsage: npx ts-node scripts/seedAdmin.ts <USER_UID>');
-  console.log('\nTo find a user\'s UID:');
-  console.log('1. Go to Firebase Console');
-  console.log('2. Navigate to Authentication > Users');
-  console.log('3. Copy the User UID column value');
-  process.exit(1);
-}
-
-setUserAsAdmin(userId)
+seedInitialAdmin()
   .then(() => process.exit(0))
   .catch((error) => {
     console.error(error);

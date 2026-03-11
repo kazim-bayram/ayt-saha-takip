@@ -90,10 +90,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return false;
   };
 
-  // Username-only login - automatically appends @insaat.local
+  // Username-only login - automatically appends @ayt.local
   const login = async (username: string, password: string): Promise<void> => {
-    // Append @insaat.local domain to username
-    const email = `${username.toLowerCase()}@insaat.local`;
+    // Append @ayt.local domain to username
+    const email = `${username.toLowerCase()}@ayt.local`;
     
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const profile = await fetchUserProfile(userCredential.user);

@@ -29,15 +29,17 @@ const Login: React.FC = () => {
         await setPersistence(auth, browserSessionPersistence);
       }
       
-      // Username-only login (appends @insaat.local)
+      // Username-only login (appends @ayt.local)
       await login(username, password);
     } catch (err: any) {
       const message = err instanceof Error ? err.message : 'Kimlik doğrulama başarısız';
       
       // Map Firebase errors to user-friendly Turkish messages
       if (message.includes('auth/invalid-credential') || message.includes('auth/wrong-password')) {
+        console.warn('[Login] Invalid credentials for username:', username);
         setError('Kullanıcı adı veya şifre hatalı');
       } else if (message.includes('auth/user-not-found')) {
+        console.warn('[Login] User not found for username:', username);
         setError('Kullanıcı bulunamadı');
       } else if (message.includes('auth/invalid-email')) {
         setError('Kullanıcı adı geçersiz');
@@ -46,6 +48,7 @@ const Login: React.FC = () => {
       } else if (message.includes('Hesap erişime kapatılmıştır')) {
         setError('Hesabınız erişime kapatılmıştır. Lütfen yönetici ile iletişime geçin');
       } else {
+        console.warn('[Login] Unhandled authentication error:', err);
         setError(message);
       }
     } finally {
