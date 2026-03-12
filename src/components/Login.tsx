@@ -56,7 +56,7 @@ const Login: React.FC = () => {
       <div className="relative w-full max-w-md animate-fade-in">
         {/* Logo & Başlık */}
         <div className="text-center mb-8">
-          <img src="/hardhat.svg" alt="AYT Mühendislik Logo" className="w-16 h-16 mx-auto mb-4" />
+          <img src="/hardhat.svg" alt="AYT Mühendislik Logo" className="w-32 h-32 mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-brand">
             AYT Mühendislik
           </h1>
