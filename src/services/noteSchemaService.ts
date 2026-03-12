@@ -6,10 +6,11 @@ import {
   Unsubscribe
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { NoteSchema, FormField } from '../types';
+import { NoteSchema, TaskSchema, FormField } from '../types';
 
 const SYSTEM_SETTINGS_COLLECTION = 'system_settings';
 const NOTE_SCHEMA_DOC_ID = 'note_schema';
+const TASK_SCHEMA_DOC_ID = 'task_schema';
 
 /** Default schema for the note form */
 export const DEFAULT_NOTE_SCHEMA: NoteSchema = {
@@ -129,5 +130,65 @@ export function subscribeNoteSchema(callback: (schema: NoteSchema) => void): Uns
       });
     },
     () => callback(DEFAULT_NOTE_SCHEMA)
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Task Schema (dynamic fields for the task creation form)
+// ---------------------------------------------------------------------------
+
+export const DEFAULT_TASK_SCHEMA: TaskSchema = {
+  fields: [],
+  version: 1
+};
+
+/** Fetch the current task schema from Firestore */
+export async function getTaskSchema(): Promise<TaskSchema> {
+  const ref = doc(db, SYSTEM_SETTINGS_COLLECTION, TASK_SCHEMA_DOC_ID);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    return DEFAULT_TASK_SCHEMA;
+  }
+  const data = snap.data();
+  if (!data?.fields || !Array.isArray(data.fields)) {
+    return DEFAULT_TASK_SCHEMA;
+  }
+  return {
+    fields: data.fields as FormField[],
+    version: typeof data.version === 'number' ? data.version : 1
+  };
+}
+
+/** Save the task schema to Firestore (Admin only) */
+export async function saveTaskSchema(schema: TaskSchema): Promise<void> {
+  const ref = doc(db, SYSTEM_SETTINGS_COLLECTION, TASK_SCHEMA_DOC_ID);
+  const payload = stripUndefined({
+    ...schema,
+    updatedAt: new Date()
+  });
+  await setDoc(ref, payload as Record<string, unknown>);
+}
+
+/** Subscribe to task schema changes (real-time) */
+export function subscribeTaskSchema(callback: (schema: TaskSchema) => void): Unsubscribe {
+  const ref = doc(db, SYSTEM_SETTINGS_COLLECTION, TASK_SCHEMA_DOC_ID);
+  return onSnapshot(
+    ref,
+    (snap) => {
+      if (!snap.exists()) {
+        callback(DEFAULT_TASK_SCHEMA);
+        return;
+      }
+      const data = snap.data();
+      if (!data?.fields || !Array.isArray(data.fields)) {
+        callback(DEFAULT_TASK_SCHEMA);
+        return;
+      }
+      callback({
+        fields: data.fields as FormField[],
+        version: typeof data.version === 'number' ? data.version : 1
+      });
+    },
+    () => callback(DEFAULT_TASK_SCHEMA)
   );
 }

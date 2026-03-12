@@ -21,8 +21,13 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { FormField, NoteSchema, FormFieldType } from '../../types';
-import { getNoteSchema, saveNoteSchema, labelToKey, DEFAULT_NOTE_SCHEMA } from '../../services/noteSchemaService';
+import { FormField, NoteSchema, TaskSchema, FormFieldType } from '../../types';
+import {
+  getNoteSchema, saveNoteSchema, labelToKey, DEFAULT_NOTE_SCHEMA,
+  getTaskSchema, saveTaskSchema, DEFAULT_TASK_SCHEMA,
+} from '../../services/noteSchemaService';
+
+type SchemaTab = 'note' | 'task';
 
 const FORM_FIELD_TYPES: { value: FormFieldType; label: string; icon: React.ReactNode }[] = [
   { value: 'text', label: 'Metin', icon: <Type className="w-4 h-4" /> },
@@ -269,7 +274,9 @@ function FieldPreview({ field, isDark: _isDark }: { field: FormField; isDark: bo
 
 const FormBuilder: React.FC = () => {
   const { currentUser, isAdmin } = useAuth();
+  const [activeTab, setActiveTab] = useState<SchemaTab>('note');
   const [schema, setSchema] = useState<NoteSchema | null>(null);
+  const [taskSchema, setTaskSchema] = useState<TaskSchema | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -291,13 +298,21 @@ const FormBuilder: React.FC = () => {
   });
   const [idManuallyEdited, setIdManuallyEdited] = useState(false);
 
+  const currentSchema = activeTab === 'note' ? schema : taskSchema;
+  const setCurrentSchema = activeTab === 'note'
+    ? (s: NoteSchema | TaskSchema | null) => setSchema(s as NoteSchema | null)
+    : (s: NoteSchema | TaskSchema | null) => setTaskSchema(s as TaskSchema | null);
+
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       setLoading(true);
       try {
-        const s = await getNoteSchema();
-        if (!cancelled) setSchema(s);
+        const [noteS, taskS] = await Promise.all([getNoteSchema(), getTaskSchema()]);
+        if (!cancelled) {
+          setSchema(noteS);
+          setTaskSchema(taskS);
+        }
       } catch (e) {
         if (!cancelled) setError('Şema yüklenemedi');
       } finally {
@@ -320,7 +335,7 @@ const FormBuilder: React.FC = () => {
   );
 
   const handleAddField = () => {
-    if (!schema) return;
+    if (!currentSchema) return;
     setError(null);
     if (!newField.label?.trim()) {
       setError('Soru / Başlık İsmi gerekli');
@@ -331,7 +346,7 @@ const FormBuilder: React.FC = () => {
       setError('Geçerli bir anahtar oluşturulamadı');
       return;
     }
-    if (schema.fields.some((f) => f.id === id)) {
+    if (currentSchema.fields.some((f) => f.id === id)) {
       setError('Bu anahtar zaten kullanılıyor. Benzersiz bir anahtar girin.');
       return;
     }
@@ -340,7 +355,7 @@ const FormBuilder: React.FC = () => {
       setError('Seçenekler Listesi için en az bir seçenek ekleyin.');
       return;
     }
-    const maxOrder = schema.fields.length > 0 ? Math.max(...schema.fields.map((f) => f.order)) : -1;
+    const maxOrder = currentSchema.fields.length > 0 ? Math.max(...currentSchema.fields.map((f) => f.order)) : -1;
     const field: FormField = {
       id,
       label: newField.label.trim(),
@@ -354,16 +369,16 @@ const FormBuilder: React.FC = () => {
       showInTable: Boolean(newField.showInTable),
       showInFilter: Boolean(newField.showInFilter)
     };
-    setSchema({ ...schema, fields: [...schema.fields, field].sort((a, b) => a.order - b.order) });
+    setCurrentSchema({ ...currentSchema, fields: [...currentSchema.fields, field].sort((a, b) => a.order - b.order) });
     setNewField({ id: '', label: '', type: 'text', required: false, options: [], subOptions: {}, order: 0, placeholder: '', description: '', showInTable: false, showInFilter: false });
     setIdManuallyEdited(false);
     setShowAddForm(false);
   };
 
   const handleUpdateField = (index: number, updates: Partial<FormField>) => {
-    if (!schema) return;
+    if (!currentSchema) return;
     setError(null);
-    const fields = [...schema.fields];
+    const fields = [...currentSchema.fields];
     const existing = fields[index];
     const next = { ...existing, ...updates } as FormField;
 
@@ -371,7 +386,7 @@ const FormBuilder: React.FC = () => {
       next.label = updates.label.trim();
     }
     if (updates.id !== undefined) {
-      const dup = schema.fields.some((f, i) => i !== index && f.id === updates.id);
+      const dup = currentSchema.fields.some((f, i) => i !== index && f.id === updates.id);
       if (dup) {
         setError('Bu anahtar zaten kullanılıyor.');
         return;
@@ -384,7 +399,7 @@ const FormBuilder: React.FC = () => {
     }
 
     fields[index] = next;
-    setSchema({ ...schema, fields });
+    setCurrentSchema({ ...currentSchema, fields });
   };
 
   const handleLabelChangeEdit = (index: number, label: string) => {
@@ -392,30 +407,34 @@ const FormBuilder: React.FC = () => {
   };
 
   const handleDeleteField = (index: number) => {
-    if (!schema || !window.confirm('Bu soruyu silmek istediğinizden emin misiniz?')) return;
-    const fields = schema.fields.filter((_, i) => i !== index);
-    setSchema({ ...schema, fields });
+    if (!currentSchema || !window.confirm('Bu soruyu silmek istediğinizden emin misiniz?')) return;
+    const fields = currentSchema.fields.filter((_, i) => i !== index);
+    setCurrentSchema({ ...currentSchema, fields });
     setExpandedIndex(null);
   };
 
   const handleMove = (index: number, dir: 'up' | 'down') => {
-    if (!schema) return;
-    const fields = [...schema.fields];
+    if (!currentSchema) return;
+    const fields = [...currentSchema.fields];
     const target = dir === 'up' ? index - 1 : index + 1;
     if (target < 0 || target >= fields.length) return;
     [fields[index], fields[target]] = [fields[target], fields[index]];
     const reordered = fields.map((f, i) => ({ ...f, order: i }));
-    setSchema({ ...schema, fields: reordered });
+    setCurrentSchema({ ...currentSchema, fields: reordered });
     setExpandedIndex(target);
   };
 
   const handleSave = async () => {
-    if (!schema) return;
+    if (!currentSchema) return;
     setSaving(true);
     setError(null);
     setSuccess(false);
     try {
-      await saveNoteSchema(schema);
+      if (activeTab === 'note') {
+        await saveNoteSchema(currentSchema as NoteSchema);
+      } else {
+        await saveTaskSchema(currentSchema as TaskSchema);
+      }
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (e: unknown) {
@@ -439,12 +458,26 @@ const FormBuilder: React.FC = () => {
 
   const resetToDefault = () => {
     if (!window.confirm('Varsayılan şemaya dönmek istediğinizden emin misiniz? Mevcut özel alanlar silinecek.')) return;
-    setSchema(DEFAULT_NOTE_SCHEMA);
+    if (activeTab === 'note') {
+      setSchema(DEFAULT_NOTE_SCHEMA);
+    } else {
+      setTaskSchema(DEFAULT_TASK_SCHEMA);
+    }
     setShowAddForm(false);
     setExpandedIndex(null);
   };
 
-  if (loading || !schema) {
+  const handleTabSwitch = (tab: SchemaTab) => {
+    setActiveTab(tab);
+    setShowAddForm(false);
+    setExpandedIndex(null);
+    setError(null);
+    setSuccess(false);
+    setNewField({ id: '', label: '', type: 'text', required: false, options: [], subOptions: {}, order: 0, placeholder: '', description: '', showInTable: false, showInFilter: false });
+    setIdManuallyEdited(false);
+  };
+
+  if (loading || !schema || !taskSchema) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <Loader2 className="w-8 h-8 animate-spin text-brand" />
@@ -452,7 +485,7 @@ const FormBuilder: React.FC = () => {
     );
   }
 
-  const sortedFields = [...schema.fields].sort((a, b) => a.order - b.order);
+  const sortedFields = [...(currentSchema?.fields ?? [])].sort((a, b) => a.order - b.order);
 
   const inputClassBase = 'w-full rounded-lg px-4 py-2 border bg-white border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand';
   const inputClassSm = 'w-full rounded-lg px-3 py-2 text-sm border bg-white border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand';
@@ -471,8 +504,12 @@ const FormBuilder: React.FC = () => {
                 <ArrowLeft className="w-5 h-5" />
               </Link>
               <div>
-                <h1 className="text-lg font-bold text-slate-800">Saha Formu Yapılandırma</h1>
-                <p className="text-xs text-slate-500">Saha ekiplerinin dolduracağı proje form alanlarını oluşturun</p>
+                <h1 className="text-lg font-bold text-slate-800">Form Yapılandırma</h1>
+                <p className="text-xs text-slate-500">
+                  {activeTab === 'note'
+                    ? 'Saha ekiplerinin dolduracağı saha notu form alanlarını oluşturun'
+                    : 'Görev oluşturma formuna eklenecek özel alanları tanımlayın'}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -488,9 +525,32 @@ const FormBuilder: React.FC = () => {
                 className="flex items-center gap-2 px-4 py-2 bg-brand hover:bg-brand-light text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Formu Kaydet ve Yayınla
+                Kaydet
               </button>
             </div>
+          </div>
+          {/* Tab Switcher */}
+          <div className="flex gap-1 mt-3 bg-slate-100 p-1 rounded-lg">
+            <button
+              onClick={() => handleTabSwitch('note')}
+              className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeTab === 'note'
+                  ? 'bg-white text-brand shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Saha Notu Formu
+            </button>
+            <button
+              onClick={() => handleTabSwitch('task')}
+              className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeTab === 'task'
+                  ? 'bg-white text-brand shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Görev Formu
+            </button>
           </div>
         </div>
       </header>

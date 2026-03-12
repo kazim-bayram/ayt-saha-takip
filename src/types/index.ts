@@ -107,6 +107,11 @@ export interface NoteSchema {
   version: number;
 }
 
+export interface TaskSchema {
+  fields: FormField[];
+  version: number;
+}
+
 export interface Note {
   id: string;
   userId: string;
@@ -296,6 +301,8 @@ export interface WeeklyTask {
   materialCosts?: number;
   plannedStart?: string;
   plannedEnd?: string;
+  /** Dynamic schema-driven field values (keyed by FormField.id) */
+  data?: Record<string, any>;
 }
 
 export type TaskMessageType = 'comment' | 'system_log';

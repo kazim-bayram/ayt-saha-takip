@@ -7,9 +7,10 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import {
   TaskCategoryColor, TaskPriority, TaskStatus, UserProfile, WeeklyTask,
-  CATEGORY_OPTIONS,
+  CATEGORY_OPTIONS, FormField, FormFieldType,
 } from '../types';
 import { CreateTaskInput } from '../hooks/useWeeklyPlan';
+import { useTaskSchema } from '../hooks/useTaskSchema';
 
 const COLOR_OPTIONS: { value: TaskCategoryColor; label: string; swatch: string }[] = [
   { value: 'bg-blue-100 text-blue-800', label: 'Mavi', swatch: 'bg-blue-500' },
@@ -51,6 +52,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   isDark: _isDark,
 }) => {
   const { getAllUsers } = useAuth();
+  const { schema: taskSchema, loading: schemaLoading } = useTaskSchema();
 
   const isEditMode = !!taskToEdit;
 
@@ -69,6 +71,12 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [dynamicData, setDynamicData] = useState<Record<string, any>>({});
+
+  const dynamicFields = useMemo(
+    () => [...taskSchema.fields].sort((a, b) => a.order - b.order),
+    [taskSchema.fields],
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -89,12 +97,26 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
       setAdaParsel(taskToEdit.adaParsel || '');
       setCategory(taskToEdit.category || '');
       setSubCategory(taskToEdit.subCategory || '');
+      const existingData = taskToEdit.data || {};
+      const data: Record<string, any> = {};
+      dynamicFields.forEach((f) => {
+        if (existingData[f.id] !== undefined) {
+          data[f.id] = existingData[f.id];
+        } else if (f.type === 'checkbox') {
+          data[f.id] = false;
+        } else if (f.type === 'multiselect') {
+          data[f.id] = [];
+        } else {
+          data[f.id] = '';
+        }
+      });
+      setDynamicData(data);
     } else {
       resetForm();
     }
     setError(null);
     setSuccessMsg(null);
-  }, [isOpen, taskToEdit, getAllUsers]);
+  }, [isOpen, taskToEdit, getAllUsers, dynamicFields]);
 
   const isValid = useMemo(
     () => title.trim().length > 0 && targetDate.length > 0,
@@ -118,6 +140,13 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     setError(null);
     setSaving(false);
     setSuccessMsg(null);
+    const initial: Record<string, any> = {};
+    dynamicFields.forEach((f) => {
+      if (f.type === 'checkbox') initial[f.id] = false;
+      else if (f.type === 'multiselect') initial[f.id] = [];
+      else initial[f.id] = '';
+    });
+    setDynamicData(initial);
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -130,6 +159,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     setError(null);
     setSuccessMsg(null);
     try {
+      const dynPayload = Object.keys(dynamicData).length > 0 ? { ...dynamicData } : undefined;
       if (isEditMode && onUpdate && taskToEdit) {
         await onUpdate(taskToEdit.id, {
           title: title.trim(),
@@ -143,6 +173,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           adaParsel: adaParsel.trim(),
           category,
           subCategory: subCategory.trim(),
+          data: dynPayload,
         });
         setSuccessMsg('Görev başarıyla güncellendi');
         setTimeout(() => { resetForm(); onClose(); }, 800);
@@ -164,6 +195,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           dependencies: [],
           actualHours: 0,
           materialCosts: 0,
+          data: dynPayload,
         });
         resetForm();
         onClose();
@@ -447,6 +479,31 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
             />
           </div>
 
+          {/* Dynamic schema fields */}
+          {schemaLoading ? (
+            <div className="flex items-center gap-2 text-slate-400 text-sm py-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Ek alanlar yükleniyor...
+            </div>
+          ) : dynamicFields.length > 0 ? (
+            <div className="space-y-4 pt-2 border-t border-slate-100">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Ek Bilgiler</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {dynamicFields.map((field) => (
+                  <TaskDynamicFieldInput
+                    key={field.id}
+                    field={field}
+                    value={dynamicData[field.id] ?? (field.type === 'checkbox' ? false : field.type === 'multiselect' ? [] : '')}
+                    onChange={(v) => setDynamicData((prev) => ({ ...prev, [field.id]: v }))}
+                    disabled={saving}
+                    inputClass={inputClass}
+                    labelClass={labelClass}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           {/* Footer */}
           <div
             className="flex items-center justify-between pt-3 border-t border-slate-100"
@@ -486,5 +543,152 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     </div>
   );
 };
+
+function TaskDynamicFieldInput({
+  field,
+  value,
+  onChange,
+  disabled,
+  inputClass,
+  labelClass,
+}: {
+  field: FormField;
+  value: any;
+  onChange: (v: any) => void;
+  disabled?: boolean;
+  inputClass: string;
+  labelClass: string;
+}) {
+  const renderInput = () => {
+    switch (field.type as FormFieldType) {
+      case 'text':
+        return (
+          <input
+            type="text"
+            value={value ?? ''}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={field.placeholder}
+            className={inputClass}
+            required={field.required}
+            disabled={disabled}
+          />
+        );
+      case 'number':
+        return (
+          <input
+            type="number"
+            value={value ?? ''}
+            onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}
+            placeholder={field.placeholder}
+            className={inputClass}
+            required={field.required}
+            disabled={disabled}
+          />
+        );
+      case 'date':
+        return (
+          <input
+            type="date"
+            value={typeof value === 'string' ? value : ''}
+            onChange={(e) => onChange(e.target.value)}
+            className={inputClass}
+            required={field.required}
+            disabled={disabled}
+          />
+        );
+      case 'select':
+        return (
+          <select
+            value={value ?? ''}
+            onChange={(e) => onChange(e.target.value)}
+            className={inputClass}
+            required={field.required}
+            disabled={disabled}
+          >
+            <option value="">Seçiniz...</option>
+            {(field.options || []).map((opt) => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        );
+      case 'multiselect': {
+        const selected = Array.isArray(value) ? value : [];
+        const toggle = (opt: string) => {
+          const next = selected.includes(opt) ? selected.filter((o: string) => o !== opt) : [...selected, opt];
+          onChange(next);
+        };
+        return (
+          <div className="space-y-1.5 p-2.5 rounded-lg border bg-slate-50 border-slate-200">
+            {(field.options || []).map((opt) => (
+              <label key={opt} className="flex items-center gap-2 cursor-pointer text-sm text-slate-700 hover:text-slate-800">
+                <input
+                  type="checkbox"
+                  checked={selected.includes(opt)}
+                  onChange={() => toggle(opt)}
+                  className="rounded border-slate-300 text-brand focus:ring-brand"
+                  disabled={disabled}
+                />
+                {opt}
+              </label>
+            ))}
+          </div>
+        );
+      }
+      case 'textarea':
+        return (
+          <textarea
+            value={value ?? ''}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={field.placeholder}
+            rows={3}
+            className={`${inputClass} resize-none`}
+            required={field.required}
+            disabled={disabled}
+          />
+        );
+      case 'checkbox':
+        return (
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="checkbox"
+              checked={Boolean(value)}
+              onChange={(e) => onChange(e.target.checked)}
+              className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand"
+              disabled={disabled}
+            />
+            <span className="text-sm text-slate-700">{field.placeholder || field.label}</span>
+          </div>
+        );
+      default:
+        return (
+          <input
+            type="text"
+            value={value ?? ''}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={field.placeholder}
+            className={inputClass}
+            required={field.required}
+            disabled={disabled}
+          />
+        );
+    }
+  };
+
+  const isFullWidth = field.type === 'textarea' || field.type === 'multiselect';
+
+  return (
+    <div className={isFullWidth ? 'sm:col-span-2' : ''}>
+      {field.type !== 'checkbox' && (
+        <label className={labelClass}>
+          {field.label} {field.required && '*'}
+        </label>
+      )}
+      {renderInput()}
+      {field.description && (
+        <p className="mt-1 text-xs text-slate-400">{field.description}</p>
+      )}
+    </div>
+  );
+}
 
 export default AddTaskModal;

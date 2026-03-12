@@ -56,24 +56,7 @@ const Login: React.FC = () => {
       <div className="relative w-full max-w-md animate-fade-in">
         {/* Logo & Başlık */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-brand rounded-2xl shadow-sm mb-4">
-            <svg 
-              className="w-10 h-10 text-white" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="1.5" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <line x1="3" y1="9" x2="21" y2="9" />
-              <line x1="3" y1="15" x2="21" y2="15" />
-              <line x1="9" y1="3" x2="9" y2="21" />
-              <line x1="15" y1="9" x2="15" y2="21" />
-              <circle cx="6" cy="6" r="1.5" fill="currentColor" />
-            </svg>
-          </div>
+          <img src="/hardhat.svg" alt="AYT Mühendislik Logo" className="w-16 h-16 mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-brand">
             AYT Mühendislik
           </h1>

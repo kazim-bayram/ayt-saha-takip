@@ -139,7 +139,7 @@ const MessageBubble: React.FC<BubbleProps> = ({ msg, isOwn, onReply, onMarkRFIRe
         {isRFI && (
           <div className="flex items-center gap-2 mb-1">
             <Shield className="w-3.5 h-3.5 text-rfi-text" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-rfi-text">Resmi RFI</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-rfi-text">Resmi Bilgi / Onay Talebi</span>
             {rfiDeadline && (
               <span className="text-[10px] flex items-center gap-1 text-slate-500">
                 <Clock className="w-3 h-3" />
@@ -149,6 +149,11 @@ const MessageBubble: React.FC<BubbleProps> = ({ msg, isOwn, onReply, onMarkRFIRe
             {rfiResponded && (
               <span className="text-[10px] text-green-600 flex items-center gap-1">
                 <Check className="w-3 h-3" /> Yanıtlandı ({rfiResponseTime})
+              </span>
+            )}
+            {!rfiResponded && (
+              <span className="text-[10px] text-amber-600 flex items-center gap-1">
+                <Clock className="w-3 h-3" /> Resmi Yanıt Bekliyor
               </span>
             )}
           </div>
@@ -190,7 +195,7 @@ const MessageBubble: React.FC<BubbleProps> = ({ msg, isOwn, onReply, onMarkRFIRe
             <button onClick={() => onMarkRFIResponded(msg.id)}
               className="flex items-center gap-1 text-[10px] mt-1 text-green-600 hover:text-green-700 transition-colors"
             >
-              <Check className="w-3 h-3" /> Yanıtlandı Olarak İşaretle
+              <Check className="w-3 h-3" /> Resmi Yanıt Verildi
             </button>
           )}
         </div>
@@ -282,7 +287,7 @@ function generateThreadPDF(task: WeeklyTask | null, messages: TaskThreadMessage[
 
     doc.setFontSize(8);
     doc.setTextColor(100, 100, 100);
-    const prefix = isRFI ? '[RFI] ' : msg.messageType === 'system_log' ? '[SYS] ' : '';
+    const prefix = isRFI ? '[Resmi Talep] ' : msg.messageType === 'system_log' ? '[SYS] ' : '';
     doc.text(`${prefix}${authorName} - ${formatTimestamp(msg.createdAt)}`, 16, y);
     y += 4;
 
@@ -418,7 +423,7 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
                 )}
                 {rfiCount > 0 && (
                   <span className="flex items-center gap-1 text-xs text-rfi-text bg-rfi-bg/30 px-1.5 py-0.5 rounded">
-                    <Shield className="w-3 h-3" />{rfiCount} RFI
+                    <Shield className="w-3 h-3" />{rfiCount} Resmi Talep
                   </span>
                 )}
               </div>
@@ -530,7 +535,7 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
               }`}
             >
               <Shield className="w-3.5 h-3.5" />
-              {isRFIMode ? 'Resmi RFI' : 'RFI Olarak İşaretle'}
+              {isRFIMode ? 'Resmi Bilgi / Onay Talebi (RFI)' : 'Resmi Bilgi / Onay Talebi (RFI)'}
             </button>
             {isRFIMode && (
               <input

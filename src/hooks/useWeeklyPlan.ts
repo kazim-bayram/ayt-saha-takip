@@ -191,6 +191,7 @@ export const useWeeklyPlan = () => {
         materialCosts: data.materialCosts || 0,
         plannedStart: data.plannedStart || '',
         plannedEnd: data.plannedEnd || '',
+        ...(data.data ? { data: data.data } : {}),
       };
       const docRef = await addDoc(collection(db, 'weekly_tasks'), payload);
       return docRef.id;
