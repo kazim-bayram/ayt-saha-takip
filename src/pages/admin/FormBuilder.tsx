@@ -20,7 +20,6 @@ import {
   X
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { FormField, NoteSchema, FormFieldType } from '../../types';
 import { getNoteSchema, saveNoteSchema, labelToKey, DEFAULT_NOTE_SCHEMA } from '../../services/noteSchemaService';
@@ -43,7 +42,6 @@ function getTypeLabel(type: FormFieldType) {
   return FORM_FIELD_TYPES.find((t) => t.value === type)?.label ?? type;
 }
 
-/** Helper text for each field type (non-technical Turkish) */
 const TYPE_HINTS: Record<FormFieldType, string> = {
   text: 'Kısa metin girişleri için.',
   number: 'Sadece rakam girişi (Metre, Adet, Derece vb.) için.',
@@ -54,12 +52,11 @@ const TYPE_HINTS: Record<FormFieldType, string> = {
   checkbox: 'Evet/Hayır onay kutusu için.'
 };
 
-/** Sub-options manager: maps parent options to child options */
 function SubOptionsManager({
   parentOptions,
   subOptions,
   onChange,
-  isDark
+  isDark: _isDark
 }: {
   parentOptions: string[];
   subOptions: Record<string, string[]>;
@@ -83,30 +80,28 @@ function SubOptionsManager({
     onChange({ ...subOptions, [parent]: current.filter((_, i) => i !== idx) });
   };
 
-  const inputClass = `flex-1 rounded-lg px-3 py-2 text-sm border ${
-    isDark ? 'bg-slate-800 border-slate-600 text-white placeholder-concrete-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-  }`;
+  const inputClass = 'flex-1 rounded-lg px-3 py-2 text-sm border bg-white border-slate-200 text-slate-800 placeholder-slate-400';
 
   return (
     <div className="space-y-2">
-      <p className={`text-xs ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
+      <p className="text-xs text-slate-500">
         Her ana seçenek için alt kategorileri tanımlayın.
       </p>
       {parentOptions.map((parent) => {
         const isExpanded = expandedParent === parent;
         const subs = subOptions[parent] || [];
         return (
-          <div key={parent} className={`rounded-lg border ${isDark ? 'border-slate-700/50' : 'border-gray-200'}`}>
+          <div key={parent} className="rounded-lg border border-slate-200">
             <button
               type="button"
               onClick={() => setExpandedParent(isExpanded ? null : parent)}
-              className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium ${isDark ? 'text-concrete-200 hover:bg-slate-800/50' : 'text-gray-700 hover:bg-gray-50'}`}
+              className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              <span>{parent} {subs.length > 0 && <span className={`text-xs ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>({subs.length} alt kategori)</span>}</span>
+              <span>{parent} {subs.length > 0 && <span className="text-xs text-slate-400">({subs.length} alt kategori)</span>}</span>
               <ChevronRight className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
             </button>
             {isExpanded && (
-              <div className={`px-3 pb-3 space-y-2 border-t ${isDark ? 'border-slate-700/50' : 'border-gray-200'}`}>
+              <div className="px-3 pb-3 space-y-2 border-t border-slate-200">
                 <div className="flex gap-2 mt-2">
                   <input
                     type="text"
@@ -120,7 +115,7 @@ function SubOptionsManager({
                     type="button"
                     onClick={() => addSubOption(parent)}
                     disabled={!(inputValues[parent] || '').trim()}
-                    className="flex items-center justify-center w-10 h-9 rounded-lg bg-safety-orange hover:bg-safety-orange-dark text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="flex items-center justify-center w-10 h-9 rounded-lg bg-brand hover:bg-brand-light text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
@@ -130,9 +125,7 @@ function SubOptionsManager({
                     {subs.map((sub, idx) => (
                       <span
                         key={idx}
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-sm ${
-                          isDark ? 'bg-slate-700 text-concrete-200' : 'bg-gray-200 text-gray-800'
-                        }`}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-sm bg-slate-100 text-slate-800"
                       >
                         {sub}
                         <button
@@ -155,11 +148,10 @@ function SubOptionsManager({
   );
 }
 
-/** Options Manager for select/multiselect */
 function OptionsManager({
   options,
   onChange,
-  isDark,
+  isDark: _isDark,
   disabled
 }: {
   options: string[];
@@ -180,13 +172,11 @@ function OptionsManager({
     onChange(options.filter((_, i) => i !== idx));
   };
 
-  const inputClass = `flex-1 rounded-lg px-3 py-2 text-sm border ${
-    isDark ? 'bg-slate-800 border-slate-600 text-white placeholder-concrete-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-  }`;
+  const inputClass = 'flex-1 rounded-lg px-3 py-2 text-sm border bg-white border-slate-200 text-slate-800 placeholder-slate-400';
 
   return (
     <div className="space-y-2">
-      <p className={`text-xs ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
+      <p className="text-xs text-slate-500">
         Aşağıdaki kutuya seçenek yazıp + butonuna basınız.
       </p>
       <div className="flex gap-2">
@@ -203,7 +193,7 @@ function OptionsManager({
           type="button"
           onClick={addOption}
           disabled={!inputValue.trim() || options.includes(inputValue.trim()) || disabled}
-          className="flex items-center justify-center w-10 h-9 rounded-lg bg-safety-orange hover:bg-safety-orange-dark text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="flex items-center justify-center w-10 h-9 rounded-lg bg-brand hover:bg-brand-light text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title="Ekle"
         >
           <Plus className="w-4 h-4" />
@@ -214,9 +204,7 @@ function OptionsManager({
           {options.map((opt, idx) => (
             <span
               key={idx}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-sm ${
-                isDark ? 'bg-slate-700 text-concrete-200' : 'bg-gray-200 text-gray-800'
-              }`}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-sm bg-slate-100 text-slate-800"
             >
               {opt}
               <button
@@ -236,11 +224,8 @@ function OptionsManager({
   );
 }
 
-/** Live preview of field input */
-function FieldPreview({ field, isDark }: { field: FormField; isDark: boolean }) {
-  const baseClass = `w-full rounded-lg px-3 py-2 text-sm border ${
-    isDark ? 'bg-slate-800/50 border-slate-600 text-concrete-200' : 'bg-gray-50 border-gray-300 text-gray-600'
-  }`;
+function FieldPreview({ field, isDark: _isDark }: { field: FormField; isDark: boolean }) {
+  const baseClass = 'w-full rounded-lg px-3 py-2 text-sm border bg-slate-50 border-slate-200 text-slate-500';
 
   if (field.type === 'text') return <input type="text" placeholder={field.placeholder || field.label} className={baseClass} readOnly disabled />;
   if (field.type === 'number') return <input type="number" placeholder={field.placeholder} className={baseClass} readOnly disabled />;
@@ -257,15 +242,15 @@ function FieldPreview({ field, isDark }: { field: FormField; isDark: boolean }) 
   }
   if (field.type === 'multiselect') {
     return (
-      <div className={`space-y-1.5 p-2 rounded-lg ${isDark ? 'bg-slate-800/50 border border-slate-600' : 'bg-gray-50 border border-gray-300'}`}>
+      <div className="space-y-1.5 p-2 rounded-lg bg-slate-50 border border-slate-200">
         {(field.options || []).slice(0, 3).map((o) => (
           <label key={o} className="flex items-center gap-2 text-sm cursor-default">
             <input type="checkbox" className="rounded" readOnly disabled />
-            <span className={isDark ? 'text-concrete-300' : 'text-gray-600'}>{o}</span>
+            <span className="text-slate-500">{o}</span>
           </label>
         ))}
         {(field.options?.length ?? 0) > 3 && (
-          <span className={`text-xs ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>+{(field.options?.length ?? 0) - 3} daha</span>
+          <span className="text-xs text-slate-400">+{(field.options?.length ?? 0) - 3} daha</span>
         )}
       </div>
     );
@@ -275,7 +260,7 @@ function FieldPreview({ field, isDark }: { field: FormField; isDark: boolean }) 
     return (
       <label className="flex items-center gap-2 text-sm cursor-default">
         <input type="checkbox" className="rounded" readOnly disabled />
-        <span className={isDark ? 'text-concrete-300' : 'text-gray-600'}>{field.placeholder || field.label}</span>
+        <span className="text-slate-500">{field.placeholder || field.label}</span>
       </label>
     );
   }
@@ -283,7 +268,6 @@ function FieldPreview({ field, isDark }: { field: FormField; isDark: boolean }) 
 }
 
 const FormBuilder: React.FC = () => {
-  const { isDark } = useTheme();
   const { currentUser, isAdmin } = useAuth();
   const [schema, setSchema] = useState<NoteSchema | null>(null);
   const [loading, setLoading] = useState(true);
@@ -325,7 +309,7 @@ const FormBuilder: React.FC = () => {
   }, []);
 
   const handleLabelChange = useCallback(
-    (label: string, currentId?: string) => {
+    (label: string, _currentId?: string) => {
       setNewField((prev) => ({
         ...prev,
         label,
@@ -462,43 +446,46 @@ const FormBuilder: React.FC = () => {
 
   if (loading || !schema) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-slate-950' : 'bg-gray-50'}`}>
-        <Loader2 className="w-8 h-8 animate-spin text-safety-orange" />
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 className="w-8 h-8 animate-spin text-brand" />
       </div>
     );
   }
 
   const sortedFields = [...schema.fields].sort((a, b) => a.order - b.order);
 
+  const inputClassBase = 'w-full rounded-lg px-4 py-2 border bg-white border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand';
+  const inputClassSm = 'w-full rounded-lg px-3 py-2 text-sm border bg-white border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand';
+
   return (
-    <div className={`min-h-screen transition-colors ${isDark ? 'bg-slate-950' : 'bg-gray-50'}`}>
-      <header className={`sticky top-0 z-40 border-b ${isDark ? 'bg-slate-850 border-slate-700/50' : 'bg-white border-gray-200 shadow-sm'}`}>
+    <div className="min-h-screen bg-slate-50 transition-colors">
+      <header className="sticky top-0 z-40 border-b bg-white/95 backdrop-blur-md border-slate-200 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Link
                 to="/"
-                className={`p-2 rounded-lg transition-colors ${isDark ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50' : 'text-gray-600 hover:bg-gray-100'}`}
+                className="p-2 rounded-lg transition-colors text-slate-500 hover:bg-slate-100"
                 title="Ana Sayfa"
               >
                 <ArrowLeft className="w-5 h-5" />
               </Link>
               <div>
-                <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Saha Formu Yapılandırma</h1>
-                <p className={`text-xs ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>Saha ekiplerinin dolduracağı proje form alanlarını oluşturun</p>
+                <h1 className="text-lg font-bold text-slate-800">Saha Formu Yapılandırma</h1>
+                <p className="text-xs text-slate-500">Saha ekiplerinin dolduracağı proje form alanlarını oluşturun</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={resetToDefault}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isDark ? 'text-concrete-400 hover:bg-slate-700/50' : 'text-gray-600 hover:bg-gray-100'}`}
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors text-slate-500 hover:bg-slate-100"
               >
                 Varsayılana Dön
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex items-center gap-2 px-4 py-2 bg-safety-orange hover:bg-safety-orange-dark text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 bg-brand hover:bg-brand-light text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 Formu Kaydet ve Yayınla
@@ -510,21 +497,21 @@ const FormBuilder: React.FC = () => {
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
         {error && (
-          <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
-            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-            <p className="text-red-300 text-sm break-words whitespace-pre-wrap flex-1">{error}</p>
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-200">
+            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <p className="text-red-700 text-sm break-words whitespace-pre-wrap flex-1">{error}</p>
           </div>
         )}
         {success && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-green-500/10 border border-green-500/30">
-            <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
-            <p className="text-green-300 text-sm">Form kaydedildi ve yayınlandı. Saha ekipleri yeni formu kullanarak kayıt oluşturabilir.</p>
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-green-50 border border-green-200">
+            <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+            <p className="text-green-700 text-sm">Form kaydedildi ve yayınlandı. Saha ekipleri yeni formu kullanarak kayıt oluşturabilir.</p>
           </div>
         )}
 
-        <div className={`rounded-xl border overflow-hidden ${isDark ? 'border-slate-700/50 bg-slate-850' : 'border-gray-200 bg-white'}`}>
-          <div className={`flex items-center justify-between p-4 border-b ${isDark ? 'border-slate-700/50' : 'border-gray-200'}`}>
-            <h2 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Sorular</h2>
+        <div className="rounded-xl border overflow-hidden border-slate-200 bg-white">
+          <div className="flex items-center justify-between p-4 border-b border-slate-200">
+            <h2 className="font-semibold text-slate-800">Sorular</h2>
             <button
               onClick={() => {
                 setShowAddForm(!showAddForm);
@@ -532,7 +519,7 @@ const FormBuilder: React.FC = () => {
                 setNewField({ id: '', label: '', type: 'text', required: false, options: [], subOptions: {}, order: 0, placeholder: '', description: '', showInTable: false, showInFilter: false });
                 setIdManuallyEdited(false);
               }}
-              className="flex items-center gap-2 px-4 py-2 bg-safety-orange hover:bg-safety-orange-dark text-white rounded-lg text-sm font-medium"
+              className="flex items-center gap-2 px-4 py-2 bg-brand hover:bg-brand-light text-white rounded-lg text-sm font-medium"
             >
               <Plus className="w-4 h-4" />
               Yeni Soru Ekle
@@ -540,31 +527,31 @@ const FormBuilder: React.FC = () => {
           </div>
 
           {showAddForm && (
-            <div className={`p-4 border-b ${isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-gray-200 bg-gray-50'}`}>
+            <div className="p-4 border-b border-slate-200 bg-slate-50">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
-                    <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>Soru / Başlık İsmi *</label>
+                    <label className="block text-sm font-medium mb-1 text-slate-700">Soru / Başlık İsmi *</label>
                     <input
                       type="text"
                       value={newField.label}
                       onChange={(e) => handleLabelChange(e.target.value)}
                       placeholder="Örn: Beton Sıcaklığı"
-                      className={`w-full rounded-lg px-4 py-2 border ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                      className={inputClassBase}
                     />
                   </div>
                   <div>
-                    <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>Cevap Türü</label>
+                    <label className="block text-sm font-medium mb-1 text-slate-700">Cevap Türü</label>
                     <select
                       value={newField.type}
                       onChange={(e) => setNewField((p) => ({ ...p, type: e.target.value as FormFieldType }))}
-                      className={`w-full rounded-lg px-4 py-2 border ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                      className={inputClassBase}
                     >
                       {FORM_FIELD_TYPES.map((t) => (
                         <option key={t.value} value={t.value}>{t.label}</option>
                       ))}
                     </select>
-                    <p className={`text-xs mt-1 ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
+                    <p className="text-xs mt-1 text-slate-500">
                       {TYPE_HINTS[(newField.type || 'text') as FormFieldType]}
                     </p>
                   </div>
@@ -576,12 +563,12 @@ const FormBuilder: React.FC = () => {
                       onChange={(e) => setNewField((p) => ({ ...p, required: e.target.checked }))}
                       className="rounded"
                     />
-                    <label htmlFor="add-required" className={`text-sm ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                    <label htmlFor="add-required" className="text-sm text-slate-700">
                       Bu alanın doldurulması zorunlu olsun mu?
                     </label>
                   </div>
-                  <div className={`rounded-lg border p-3 space-y-3 ${isDark ? 'border-slate-700/50 bg-slate-800/30' : 'border-gray-200 bg-gray-100/50'}`}>
-                    <p className={`text-xs font-medium ${isDark ? 'text-concrete-400' : 'text-gray-600'}`}>Görünürlük Ayarları</p>
+                  <div className="rounded-lg border p-3 space-y-3 border-slate-200 bg-slate-100/50">
+                    <p className="text-xs font-medium text-slate-500">Görünürlük Ayarları</p>
                     <div className="flex items-center gap-3">
                       <input
                         type="checkbox"
@@ -590,7 +577,7 @@ const FormBuilder: React.FC = () => {
                         onChange={(e) => setNewField((p) => ({ ...p, showInTable: e.target.checked }))}
                         className="rounded"
                       />
-                      <label htmlFor="add-showInTable" className={`text-sm ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                      <label htmlFor="add-showInTable" className="text-sm text-slate-700">
                         Tablo Sütunlarında Göster
                       </label>
                     </div>
@@ -602,7 +589,7 @@ const FormBuilder: React.FC = () => {
                         onChange={(e) => setNewField((p) => ({ ...p, showInFilter: e.target.checked }))}
                         className="rounded"
                       />
-                      <label htmlFor="add-showInFilter" className={`text-sm ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                      <label htmlFor="add-showInFilter" className="text-sm text-slate-700">
                         Filtre Alanlarında Göster
                       </label>
                     </div>
@@ -610,53 +597,53 @@ const FormBuilder: React.FC = () => {
                   {(newField.type === 'select' || newField.type === 'multiselect') && (
                     <div className="space-y-4">
                       <div>
-                        <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                        <label className="block text-sm font-medium mb-1 text-slate-700">
                           Seçenekler Listesi *
                         </label>
-                        <p className={`text-xs mb-2 ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
+                        <p className="text-xs mb-2 text-slate-500">
                           Saha personelinin seçebileceği maddeleri ekleyin.
                         </p>
                         <OptionsManager
                           options={newField.options || []}
                           onChange={(opts) => setNewField((p) => ({ ...p, options: opts }))}
-                          isDark={isDark}
+                          isDark={false}
                         />
                       </div>
                       {newField.type === 'select' && (newField.options || []).length > 0 && (
                         <div>
-                          <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                          <label className="block text-sm font-medium mb-1 text-slate-700">
                             Alt Kategoriler (Opsiyonel)
                           </label>
                           <SubOptionsManager
                             parentOptions={newField.options || []}
                             subOptions={newField.subOptions || {}}
                             onChange={(so) => setNewField((p) => ({ ...p, subOptions: so }))}
-                            isDark={isDark}
+                            isDark={false}
                           />
                         </div>
                       )}
                     </div>
                   )}
                   <div>
-                    <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>İpucu Yazısı</label>
+                    <label className="block text-sm font-medium mb-1 text-slate-700">İpucu Yazısı</label>
                     <input
                       type="text"
                       value={newField.placeholder || ''}
                       onChange={(e) => setNewField((p) => ({ ...p, placeholder: e.target.value || undefined }))}
                       placeholder="Örn: Derece giriniz..."
-                      className={`w-full rounded-lg px-4 py-2 border text-sm ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                      className={`${inputClassBase} text-sm`}
                     />
-                    <p className={`text-xs mt-1 ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
+                    <p className="text-xs mt-1 text-slate-500">
                       Kullanıcı kutunun içinde silik şekilde ne görecek?
                     </p>
                   </div>
-                  <details className={`rounded-lg border ${isDark ? 'border-slate-700/50 bg-slate-800/30' : 'border-gray-200 bg-gray-100/50'}`}>
-                    <summary className={`px-4 py-2 cursor-pointer text-sm font-medium ${isDark ? 'text-concrete-400' : 'text-gray-600'}`}>
+                  <details className="rounded-lg border border-slate-200 bg-slate-100/50">
+                    <summary className="px-4 py-2 cursor-pointer text-sm font-medium text-slate-500">
                       Gelişmiş Ayarlar
                     </summary>
                     <div className="p-4 pt-0 space-y-3">
                       <div>
-                        <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
+                        <label className="block text-xs font-medium mb-1 text-slate-500">
                           Sistem Kimliği (Otomatik)
                         </label>
                         <input
@@ -668,20 +655,20 @@ const FormBuilder: React.FC = () => {
                           }}
                           placeholder="Otomatik oluşturulur"
                           readOnly={!idManuallyEdited}
-                          className={`w-full rounded-lg px-3 py-2 text-sm font-mono border ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'} ${!idManuallyEdited ? 'opacity-70 cursor-default' : ''}`}
+                          className={`${inputClassSm} font-mono ${!idManuallyEdited ? 'opacity-70 cursor-default' : ''}`}
                         />
-                        <p className={`text-xs mt-1 ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
+                        <p className="text-xs mt-1 text-slate-500">
                           Sistem tarafından otomatik oluşturulur, dokunmanıza gerek yoktur.
                         </p>
                       </div>
                       <div>
-                        <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>Açıklama</label>
+                        <label className="block text-xs font-medium mb-1 text-slate-500">Açıklama</label>
                         <input
                           type="text"
                           value={newField.description || ''}
                           onChange={(e) => setNewField((p) => ({ ...p, description: e.target.value || undefined }))}
                           placeholder="Alan altında bilgilendirme metni"
-                          className={`w-full rounded-lg px-3 py-2 text-sm border ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                          className={inputClassSm}
                         />
                       </div>
                     </div>
@@ -692,49 +679,49 @@ const FormBuilder: React.FC = () => {
                         setShowAddForm(false);
                         setError(null);
                       }}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium ${isDark ? 'text-concrete-400 hover:bg-slate-700/50' : 'text-gray-600 hover:bg-gray-100'}`}
+                      className="px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-100"
                     >
                       İptal
                     </button>
-                    <button onClick={handleAddField} className="px-4 py-2 bg-safety-orange hover:bg-safety-orange-dark text-white rounded-lg text-sm font-medium">
+                    <button onClick={handleAddField} className="px-4 py-2 bg-brand hover:bg-brand-light text-white rounded-lg text-sm font-medium">
                       Soruyu Ekle
                     </button>
                   </div>
                 </div>
-                <div className={`rounded-lg p-4 ${isDark ? 'bg-slate-800/50' : 'bg-gray-100'}`}>
-                  <p className={`text-xs font-medium mb-3 ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>Önizleme</p>
-                  <FieldPreview field={newField as FormField} isDark={isDark} />
+                <div className="rounded-lg p-4 bg-slate-100">
+                  <p className="text-xs font-medium mb-3 text-slate-500">Önizleme</p>
+                  <FieldPreview field={newField as FormField} isDark={false} />
                 </div>
               </div>
             </div>
           )}
 
-          <ul className="divide-y divide-slate-700/50">
+          <ul className="divide-y divide-slate-200">
             {sortedFields.length === 0 ? (
-              <li className={`p-8 text-center ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>Henüz soru yok. Yeni soru ekleyin.</li>
+              <li className="p-8 text-center text-slate-500">Henüz soru yok. Yeni soru ekleyin.</li>
             ) : (
               sortedFields.map((field, index) => {
                 const isExpanded = expandedIndex === index;
                 return (
                   <li
                     key={field.id}
-                    className={`border-b ${isDark ? 'border-slate-700/50' : 'border-gray-200'} last:border-b-0`}
+                    className="border-b border-slate-200 last:border-b-0"
                   >
                     <div
                       onClick={() => setExpandedIndex(isExpanded ? null : index)}
                       className={`flex items-center justify-between gap-4 p-4 cursor-pointer transition-colors ${
-                        isExpanded ? (isDark ? 'bg-slate-800/50' : 'bg-gray-50') : isDark ? 'hover:bg-slate-800/30' : 'hover:bg-gray-50'
+                        isExpanded ? 'bg-slate-50' : 'hover:bg-slate-50'
                       }`}
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className={`p-1.5 rounded-lg ${isDark ? 'bg-slate-700 text-concrete-400' : 'bg-gray-200 text-gray-600'}`}>
+                        <div className="p-1.5 rounded-lg bg-slate-100 text-slate-500">
                           {getTypeIcon(field.type)}
                         </div>
                         <div className="min-w-0">
-                          <p className={`font-medium truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{field.label}</p>
-                          <p className={`text-xs font-mono truncate ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>{field.id}</p>
+                          <p className="font-medium truncate text-slate-800">{field.label}</p>
+                          <p className="text-xs font-mono truncate text-slate-400">{field.id}</p>
                         </div>
-                        <span className={`text-xs shrink-0 ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>
+                        <span className="text-xs shrink-0 text-slate-400">
                           {getTypeLabel(field.type)} • {field.required ? 'Zorunlu' : 'İsteğe bağlı'}
                         </span>
                       </div>
@@ -742,7 +729,7 @@ const FormBuilder: React.FC = () => {
                         <button
                           onClick={() => handleMove(index, 'up')}
                           disabled={index === 0}
-                          className={`p-1.5 rounded transition-colors disabled:opacity-30 ${isDark ? 'hover:bg-slate-700 text-concrete-400' : 'hover:bg-gray-200 text-gray-600'}`}
+                          className="p-1.5 rounded transition-colors disabled:opacity-30 hover:bg-slate-100 text-slate-500"
                           title="Yukarı taşı"
                         >
                           <ChevronUp className="w-4 h-4" />
@@ -750,14 +737,14 @@ const FormBuilder: React.FC = () => {
                         <button
                           onClick={() => handleMove(index, 'down')}
                           disabled={index === sortedFields.length - 1}
-                          className={`p-1.5 rounded transition-colors disabled:opacity-30 ${isDark ? 'hover:bg-slate-700 text-concrete-400' : 'hover:bg-gray-200 text-gray-600'}`}
+                          className="p-1.5 rounded transition-colors disabled:opacity-30 hover:bg-slate-100 text-slate-500"
                           title="Aşağı taşı"
                         >
                           <ChevronDown className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => setExpandedIndex(isExpanded ? null : index)}
-                          className={`p-1.5 rounded transition-colors ${isDark ? 'hover:bg-slate-700 text-concrete-400' : 'hover:bg-gray-200 text-gray-600'}`}
+                          className="p-1.5 rounded transition-colors hover:bg-slate-100 text-slate-500"
                           title={isExpanded ? 'Daralt' : 'Düzenle'}
                         >
                           <ChevronRight className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
@@ -774,31 +761,31 @@ const FormBuilder: React.FC = () => {
                     </div>
 
                     {isExpanded && (
-                      <div className={`p-4 border-t ${isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-gray-200 bg-gray-50'}`}>
+                      <div className="p-4 border-t border-slate-200 bg-slate-50">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                           <div className="space-y-4">
                             <div>
-                              <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>Soru / Başlık İsmi *</label>
+                              <label className="block text-sm font-medium mb-1 text-slate-700">Soru / Başlık İsmi *</label>
                               <input
                                 type="text"
                                 value={field.label}
                                 onChange={(e) => handleLabelChangeEdit(index, e.target.value)}
                                 placeholder="Örn: Beton Sıcaklığı"
-                                className={`w-full rounded-lg px-3 py-2 text-sm border ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                                className={inputClassSm}
                               />
                             </div>
                             <div>
-                              <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>Cevap Türü</label>
+                              <label className="block text-sm font-medium mb-1 text-slate-700">Cevap Türü</label>
                               <select
                                 value={field.type}
                                 onChange={(e) => handleUpdateField(index, { type: e.target.value as FormFieldType })}
-                                className={`w-full rounded-lg px-3 py-2 text-sm border ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                                className={inputClassSm}
                               >
                                 {FORM_FIELD_TYPES.map((t) => (
                                   <option key={t.value} value={t.value}>{t.label}</option>
                                 ))}
                               </select>
-                              <p className={`text-xs mt-1 ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
+                              <p className="text-xs mt-1 text-slate-500">
                                 {TYPE_HINTS[field.type]}
                               </p>
                             </div>
@@ -810,12 +797,12 @@ const FormBuilder: React.FC = () => {
                                 onChange={(e) => handleUpdateField(index, { required: e.target.checked })}
                                 className="rounded"
                               />
-                              <label htmlFor={`req-${field.id}`} className={`text-sm ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                              <label htmlFor={`req-${field.id}`} className="text-sm text-slate-700">
                                 Bu alanın doldurulması zorunlu olsun mu?
                               </label>
                             </div>
-                            <div className={`rounded-lg border p-3 space-y-3 ${isDark ? 'border-slate-700/50 bg-slate-800/30' : 'border-gray-200 bg-gray-100/50'}`}>
-                              <p className={`text-xs font-medium ${isDark ? 'text-concrete-400' : 'text-gray-600'}`}>Görünürlük Ayarları</p>
+                            <div className="rounded-lg border p-3 space-y-3 border-slate-200 bg-slate-100/50">
+                              <p className="text-xs font-medium text-slate-500">Görünürlük Ayarları</p>
                               <div className="flex items-center gap-3">
                                 <input
                                   type="checkbox"
@@ -824,7 +811,7 @@ const FormBuilder: React.FC = () => {
                                   onChange={(e) => handleUpdateField(index, { showInTable: e.target.checked })}
                                   className="rounded"
                                 />
-                                <label htmlFor={`showInTable-${field.id}`} className={`text-sm ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                                <label htmlFor={`showInTable-${field.id}`} className="text-sm text-slate-700">
                                   Tablo Sütunlarında Göster
                                 </label>
                               </div>
@@ -836,7 +823,7 @@ const FormBuilder: React.FC = () => {
                                   onChange={(e) => handleUpdateField(index, { showInFilter: e.target.checked })}
                                   className="rounded"
                                 />
-                                <label htmlFor={`showInFilter-${field.id}`} className={`text-sm ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                                <label htmlFor={`showInFilter-${field.id}`} className="text-sm text-slate-700">
                                   Filtre Alanlarında Göster
                                 </label>
                               </div>
@@ -844,50 +831,50 @@ const FormBuilder: React.FC = () => {
                             {(field.type === 'select' || field.type === 'multiselect') && (
                               <div className="space-y-4">
                                 <div>
-                                  <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                                  <label className="block text-sm font-medium mb-1 text-slate-700">
                                     Seçenekler Listesi *
                                   </label>
-                                  <p className={`text-xs mb-2 ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
+                                  <p className="text-xs mb-2 text-slate-500">
                                     Saha personelinin seçebileceği maddeleri ekleyin.
                                   </p>
                                   <OptionsManager
                                     options={field.options || []}
                                     onChange={(opts) => handleUpdateField(index, { options: opts })}
-                                    isDark={isDark}
+                                    isDark={false}
                                   />
                                 </div>
                                 {field.type === 'select' && (field.options || []).length > 0 && (
                                   <div>
-                                    <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                                    <label className="block text-sm font-medium mb-1 text-slate-700">
                                       Alt Kategoriler (Opsiyonel)
                                     </label>
                                     <SubOptionsManager
                                       parentOptions={field.options || []}
                                       subOptions={field.subOptions || {}}
                                       onChange={(so) => handleUpdateField(index, { subOptions: so })}
-                                      isDark={isDark}
+                                      isDark={false}
                                     />
                                   </div>
                                 )}
                               </div>
                             )}
                             <div>
-                              <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>İpucu Yazısı</label>
+                              <label className="block text-sm font-medium mb-1 text-slate-700">İpucu Yazısı</label>
                               <input
                                 type="text"
                                 value={field.placeholder || ''}
                                 onChange={(e) => handleUpdateField(index, { placeholder: e.target.value || undefined })}
                                 placeholder="Örn: Derece giriniz..."
-                                className={`w-full rounded-lg px-3 py-2 text-sm border ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                                className={inputClassSm}
                               />
                             </div>
-                            <details className={`rounded-lg border ${isDark ? 'border-slate-700/50 bg-slate-800/30' : 'border-gray-200 bg-gray-100/50'}`}>
-                              <summary className={`px-4 py-2 cursor-pointer text-sm font-medium ${isDark ? 'text-concrete-400' : 'text-gray-600'}`}>
+                            <details className="rounded-lg border border-slate-200 bg-slate-100/50">
+                              <summary className="px-4 py-2 cursor-pointer text-sm font-medium text-slate-500">
                                 Gelişmiş Ayarlar
                               </summary>
                               <div className="p-4 pt-0 space-y-3">
                                 <div>
-                                  <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
+                                  <label className="block text-xs font-medium mb-1 text-slate-500">
                                     Sistem Kimliği (Otomatik)
                                   </label>
                                   <input
@@ -895,28 +882,28 @@ const FormBuilder: React.FC = () => {
                                     value={field.id}
                                     onChange={(e) => handleUpdateField(index, { id: e.target.value })}
                                     placeholder="Otomatik oluşturulur"
-                                    className={`w-full rounded-lg px-3 py-2 text-sm font-mono border ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                                    className={`${inputClassSm} font-mono`}
                                   />
-                                  <p className={`text-xs mt-1 ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
+                                  <p className="text-xs mt-1 text-slate-500">
                                     Sistem tarafından otomatik oluşturulur, dokunmanıza gerek yoktur.
                                   </p>
                                 </div>
                                 <div>
-                                  <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>Açıklama</label>
+                                  <label className="block text-xs font-medium mb-1 text-slate-500">Açıklama</label>
                                   <input
                                     type="text"
                                     value={field.description || ''}
                                     onChange={(e) => handleUpdateField(index, { description: e.target.value || undefined })}
                                     placeholder="Alan altında bilgilendirme metni"
-                                    className={`w-full rounded-lg px-3 py-2 text-sm border ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                                    className={inputClassSm}
                                   />
                                 </div>
                               </div>
                             </details>
                           </div>
-                          <div className={`rounded-lg p-4 ${isDark ? 'bg-slate-800/50' : 'bg-gray-100'}`}>
-                            <p className={`text-xs font-medium mb-3 ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>Önizleme</p>
-                            <FieldPreview field={field} isDark={isDark} />
+                          <div className="rounded-lg p-4 bg-slate-100">
+                            <p className="text-xs font-medium mb-3 text-slate-500">Önizleme</p>
+                            <FieldPreview field={field} isDark={false} />
                           </div>
                         </div>
                       </div>

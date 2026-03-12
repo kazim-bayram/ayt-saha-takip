@@ -34,36 +34,36 @@ export const NOTE_STATUS_CONFIG: Record<NoteStatus, StatusConfig> = {
     label: 'Beklemede',
     emoji: '🟡',
     color: 'yellow',
-    bgLight: 'bg-amber-100',
-    bgDark: 'bg-amber-600/20',
-    textLight: 'text-amber-700',
-    textDark: 'text-amber-300',
-    borderLight: 'border-amber-300',
-    borderDark: 'border-amber-600'
+    bgLight: 'bg-yellow-50',
+    bgDark: 'bg-yellow-50',
+    textLight: 'text-yellow-700',
+    textDark: 'text-yellow-700',
+    borderLight: 'border-yellow-200',
+    borderDark: 'border-yellow-200'
   },
   Onay: {
     key: 'Onay',
     label: 'Onay',
     emoji: '🟢',
     color: 'green',
-    bgLight: 'bg-green-100',
-    bgDark: 'bg-green-600/20',
+    bgLight: 'bg-green-50',
+    bgDark: 'bg-green-50',
     textLight: 'text-green-700',
-    textDark: 'text-green-300',
-    borderLight: 'border-green-300',
-    borderDark: 'border-green-600'
+    textDark: 'text-green-700',
+    borderLight: 'border-green-200',
+    borderDark: 'border-green-200'
   },
   'Olumsuz Sonuç': {
     key: 'Olumsuz Sonuç',
     label: 'Olumsuz Sonuç',
     emoji: '🔴',
     color: 'red',
-    bgLight: 'bg-red-100',
-    bgDark: 'bg-red-600/20',
+    bgLight: 'bg-red-50',
+    bgDark: 'bg-red-50',
     textLight: 'text-red-700',
-    textDark: 'text-red-300',
-    borderLight: 'border-red-300',
-    borderDark: 'border-red-600'
+    textDark: 'text-red-700',
+    borderLight: 'border-red-200',
+    borderDark: 'border-red-200'
   }
 };
 

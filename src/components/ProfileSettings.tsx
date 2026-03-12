@@ -3,7 +3,6 @@ import {
   X,
   User,
   AtSign,
-  Mail,
   Lock,
   Loader2,
   AlertCircle,
@@ -13,7 +12,6 @@ import {
   EyeOff,
   Save
 } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 
 interface ProfileSettingsProps {
@@ -29,7 +27,6 @@ interface Toast {
 }
 
 const ProfileSettings: React.FC<ProfileSettingsProps> = ({ isOpen, onClose }) => {
-  const { isDark } = useTheme();
   const { 
     userProfile, 
     checkUsernameAvailable, 
@@ -40,22 +37,17 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ isOpen, onClose }) =>
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [toast, setToast] = useState<Toast | null>(null);
   
-  // Profile tab state
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'same'>('idle');
   const [profileLoading, setProfileLoading] = useState(false);
 
-  // Email tab removed - username-only system
-
-  // Password tab state
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPasswords, setShowPasswords] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
 
-  // Initialize form with current user data
   useEffect(() => {
     if (userProfile) {
       setDisplayName(userProfile.displayName || '');
@@ -63,7 +55,6 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ isOpen, onClose }) =>
     }
   }, [userProfile]);
 
-  // Clear toast after 3 seconds
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => setToast(null), 3000);
@@ -73,7 +64,6 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ isOpen, onClose }) =>
 
   if (!isOpen) return null;
 
-  // Check username availability
   const handleUsernameChange = async (value: string) => {
     const lowered = value.toLowerCase();
     setUsername(lowered);
@@ -103,7 +93,6 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ isOpen, onClose }) =>
     }
   };
 
-  // Handle profile update
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (usernameStatus === 'taken') return;
@@ -131,9 +120,6 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ isOpen, onClose }) =>
     }
   };
 
-  // Email update removed - username-only system
-
-  // Handle password update
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -184,25 +170,15 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ isOpen, onClose }) =>
       className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
       onClick={handleBackdropClick}
     >
-      <div className={`rounded-2xl max-w-lg w-full shadow-2xl border animate-slide-up ${
-        isDark 
-          ? 'bg-slate-850 border-slate-700/50' 
-          : 'bg-white border-gray-200'
-      }`}>
+      <div className="rounded-2xl max-w-lg w-full shadow-2xl border animate-slide-up bg-white border-slate-200">
         {/* Header */}
-        <div className={`flex items-center justify-between p-4 border-b ${
-          isDark ? 'border-slate-700/50' : 'border-gray-200'
-        }`}>
-          <h2 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        <div className="flex items-center justify-between p-4 border-b border-slate-200">
+          <h2 className="text-xl font-semibold text-slate-800">
             Profil Ayarları
           </h2>
           <button
             onClick={onClose}
-            className={`p-2 rounded-lg transition-colors ${
-              isDark 
-                ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50' 
-                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-            }`}
+            className="p-2 rounded-lg transition-colors text-slate-400 hover:text-slate-600 hover:bg-slate-100"
           >
             <X className="w-5 h-5" />
           </button>
@@ -212,34 +188,30 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ isOpen, onClose }) =>
         {toast && (
           <div className={`mx-4 mt-4 p-3 rounded-xl flex items-center gap-3 animate-slide-up ${
             toast.type === 'success' 
-              ? 'bg-green-500/10 border border-green-500/30' 
-              : 'bg-red-500/10 border border-red-500/30'
+              ? 'bg-green-50 border border-green-200' 
+              : 'bg-red-50 border border-red-200'
           }`}>
             {toast.type === 'success' ? (
-              <CheckCircle2 className="w-5 h-5 text-green-400" />
+              <CheckCircle2 className="w-5 h-5 text-green-600" />
             ) : (
-              <AlertCircle className="w-5 h-5 text-red-400" />
+              <AlertCircle className="w-5 h-5 text-red-600" />
             )}
-            <p className={toast.type === 'success' ? 'text-green-300' : 'text-red-300'}>
+            <p className={toast.type === 'success' ? 'text-green-700' : 'text-red-700'}>
               {toast.message}
             </p>
           </div>
         )}
 
         {/* Tabs */}
-        <div className={`flex border-b ${isDark ? 'border-slate-700/50' : 'border-gray-200'}`}>
+        <div className="flex border-b border-slate-200">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 text-sm font-medium transition-colors ${
                 activeTab === tab.key
-                  ? isDark
-                    ? 'text-safety-orange border-b-2 border-safety-orange'
-                    : 'text-safety-orange border-b-2 border-safety-orange'
-                  : isDark
-                    ? 'text-concrete-400 hover:text-white'
-                    : 'text-gray-500 hover:text-gray-700'
+                  ? 'text-brand border-b-2 border-brand'
+                  : 'text-slate-500 hover:text-slate-700'
               }`}
             >
               {tab.icon}
@@ -250,52 +222,41 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ isOpen, onClose }) =>
 
         {/* Content */}
         <div className="p-6">
-          {/* Profile Tab */}
           {activeTab === 'profile' && (
             <form onSubmit={handleProfileSubmit} className="space-y-4">
-              {/* Display Name */}
               <div>
-                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                <label className="block text-sm font-medium mb-2 text-slate-700">
                   Ad Soyad
                 </label>
                 <div className="relative">
-                  <User className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDark ? 'text-concrete-500' : 'text-gray-400'}`} />
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                   <input
                     type="text"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    className={`w-full rounded-xl pl-12 pr-4 py-3 transition-all focus:outline-none focus:ring-2 focus:ring-safety-orange/20 ${
-                      isDark 
-                        ? 'bg-slate-900/50 border border-slate-600 text-white placeholder-concrete-500 focus:border-safety-orange' 
-                        : 'bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-400 focus:border-safety-orange'
-                    }`}
+                    className="w-full rounded-xl pl-12 pr-4 py-3 transition-all focus:outline-none bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:border-brand focus:ring-2 focus:ring-brand/20"
                     required
                   />
                 </div>
               </div>
 
-              {/* Username */}
               <div>
-                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                <label className="block text-sm font-medium mb-2 text-slate-700">
                   Kullanıcı Adı
                 </label>
                 <div className="relative">
-                  <AtSign className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDark ? 'text-concrete-500' : 'text-gray-400'}`} />
+                  <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => handleUsernameChange(e.target.value)}
-                    className={`w-full rounded-xl pl-12 pr-12 py-3 transition-all focus:outline-none focus:ring-2 focus:ring-safety-orange/20 ${
-                      isDark 
-                        ? 'bg-slate-900/50 border border-slate-600 text-white placeholder-concrete-500 focus:border-safety-orange' 
-                        : 'bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-400 focus:border-safety-orange'
-                    } ${usernameStatus === 'taken' ? 'border-red-500' : ''} ${usernameStatus === 'available' ? 'border-green-500' : ''}`}
+                    className={`w-full rounded-xl pl-12 pr-12 py-3 transition-all focus:outline-none bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:border-brand focus:ring-2 focus:ring-brand/20 ${usernameStatus === 'taken' ? 'border-red-500' : ''} ${usernameStatus === 'available' ? 'border-green-500' : ''}`}
                     required
                     minLength={3}
                   />
                   <div className="absolute right-4 top-1/2 -translate-y-1/2">
                     {usernameStatus === 'checking' && (
-                      <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+                      <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
                     )}
                     {usernameStatus === 'available' && (
                       <CheckCircle2 className="w-5 h-5 text-green-500" />
@@ -306,14 +267,14 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ isOpen, onClose }) =>
                   </div>
                 </div>
                 {usernameStatus === 'taken' && (
-                  <p className="text-red-400 text-xs mt-1">Bu kullanıcı adı zaten kullanılıyor</p>
+                  <p className="text-red-600 text-xs mt-1">Bu kullanıcı adı zaten kullanılıyor</p>
                 )}
               </div>
 
               <button
                 type="submit"
                 disabled={profileLoading || usernameStatus === 'taken' || usernameStatus === 'checking'}
-                className="w-full flex items-center justify-center gap-2 bg-safety-orange hover:bg-safety-orange-dark text-white font-semibold py-3 px-4 rounded-xl transition-colors disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-light text-white font-semibold py-3 px-4 rounded-xl transition-colors disabled:opacity-50"
               >
                 {profileLoading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -325,88 +286,72 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({ isOpen, onClose }) =>
             </form>
           )}
 
-          {/* Password Tab */}
           {activeTab === 'password' && (
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
-              {/* Current Password */}
               <div>
-                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                <label className="block text-sm font-medium mb-2 text-slate-700">
                   Mevcut Şifre
                 </label>
                 <div className="relative">
-                  <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDark ? 'text-concrete-500' : 'text-gray-400'}`} />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                   <input
                     type={showPasswords ? 'text' : 'password'}
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    className={`w-full rounded-xl pl-12 pr-12 py-3 transition-all focus:outline-none focus:ring-2 focus:ring-safety-orange/20 ${
-                      isDark 
-                        ? 'bg-slate-900/50 border border-slate-600 text-white placeholder-concrete-500 focus:border-safety-orange' 
-                        : 'bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-400 focus:border-safety-orange'
-                    }`}
+                    className="w-full rounded-xl pl-12 pr-12 py-3 transition-all focus:outline-none bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:border-brand focus:ring-2 focus:ring-brand/20"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPasswords(!showPasswords)}
-                    className={`absolute right-4 top-1/2 -translate-y-1/2 ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
                   >
                     {showPasswords ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
 
-              {/* New Password */}
               <div>
-                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                <label className="block text-sm font-medium mb-2 text-slate-700">
                   Yeni Şifre
                 </label>
                 <div className="relative">
-                  <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDark ? 'text-concrete-500' : 'text-gray-400'}`} />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                   <input
                     type={showPasswords ? 'text' : 'password'}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className={`w-full rounded-xl pl-12 pr-4 py-3 transition-all focus:outline-none focus:ring-2 focus:ring-safety-orange/20 ${
-                      isDark 
-                        ? 'bg-slate-900/50 border border-slate-600 text-white placeholder-concrete-500 focus:border-safety-orange' 
-                        : 'bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-400 focus:border-safety-orange'
-                    }`}
+                    className="w-full rounded-xl pl-12 pr-4 py-3 transition-all focus:outline-none bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:border-brand focus:ring-2 focus:ring-brand/20"
                     required
                     minLength={6}
                   />
                 </div>
               </div>
 
-              {/* Confirm Password */}
               <div>
-                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                <label className="block text-sm font-medium mb-2 text-slate-700">
                   Yeni Şifre (Tekrar)
                 </label>
                 <div className="relative">
-                  <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDark ? 'text-concrete-500' : 'text-gray-400'}`} />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                   <input
                     type={showPasswords ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className={`w-full rounded-xl pl-12 pr-4 py-3 transition-all focus:outline-none focus:ring-2 focus:ring-safety-orange/20 ${
-                      isDark 
-                        ? 'bg-slate-900/50 border border-slate-600 text-white placeholder-concrete-500 focus:border-safety-orange' 
-                        : 'bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-400 focus:border-safety-orange'
-                    } ${newPassword && confirmPassword && newPassword !== confirmPassword ? 'border-red-500' : ''}`}
+                    className={`w-full rounded-xl pl-12 pr-4 py-3 transition-all focus:outline-none bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:border-brand focus:ring-2 focus:ring-brand/20 ${newPassword && confirmPassword && newPassword !== confirmPassword ? 'border-red-500' : ''}`}
                     required
                     minLength={6}
                   />
                 </div>
                 {newPassword && confirmPassword && newPassword !== confirmPassword && (
-                  <p className="text-red-400 text-xs mt-1">Şifreler eşleşmiyor</p>
+                  <p className="text-red-600 text-xs mt-1">Şifreler eşleşmiyor</p>
                 )}
               </div>
 
               <button
                 type="submit"
                 disabled={passwordLoading || !currentPassword || !newPassword || newPassword !== confirmPassword}
-                className="w-full flex items-center justify-center gap-2 bg-safety-orange hover:bg-safety-orange-dark text-white font-semibold py-3 px-4 rounded-xl transition-colors disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-light text-white font-semibold py-3 px-4 rounded-xl transition-colors disabled:opacity-50"
               >
                 {passwordLoading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />

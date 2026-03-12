@@ -10,7 +10,6 @@ import {
   Layers,
   X,
 } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
 import { useNotes } from '../hooks/useNotes';
 import { useWeeklyPlan } from '../hooks/useWeeklyPlan';
 import {
@@ -48,7 +47,7 @@ interface UnifiedRow {
 }
 
 // ---------------------------------------------------------------------------
-// Status pill styling (always light/corporate, regardless of dark mode)
+// Status pill styling
 // ---------------------------------------------------------------------------
 
 const STATUS_PILL: Record<string, string> = {
@@ -76,7 +75,6 @@ const FilterChip: React.FC<{ label: string; onClear: () => void }> = ({ label, o
 // ---------------------------------------------------------------------------
 
 const TablePage: React.FC = () => {
-  const { isDark } = useTheme();
   const {
     notes, loading: notesLoading, error: notesError,
     updateNote, deleteNote, addComment, deleteComment, canEditNote, canDeleteNote,
@@ -241,7 +239,6 @@ const TablePage: React.FC = () => {
     }));
   }, [sortedRows, groupByKategori]);
 
-  // Distinct categories for the filter dropdown
   const distinctKategoriler = useMemo(() => {
     const set = new Set<string>();
     allRows.forEach(r => { if (r.kategori) set.add(r.kategori); });
@@ -304,55 +301,55 @@ const TablePage: React.FC = () => {
 
   const COL_SPAN = 9;
 
-  const thBase = 'group py-3 px-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider border-r border-gray-200 cursor-pointer select-none hover:bg-gray-100/80 transition-colors whitespace-nowrap';
-  const filterInputClass = 'w-full py-1.5 px-2 text-xs rounded border border-gray-200 bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300 focus:border-blue-300';
+  const thBase = 'group py-3 px-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-r border-slate-200 cursor-pointer select-none hover:bg-slate-100/80 transition-colors whitespace-nowrap';
+  const filterInputClass = 'w-full py-1.5 px-2 text-xs rounded border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-brand/20 focus:border-brand';
 
   const SortArrow = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <span className="ml-1 opacity-0 group-hover:opacity-40 text-[9px]">↕</span>;
     return sortDir === 'asc'
-      ? <ChevronUp className="w-3 h-3 ml-0.5 inline text-gray-700" />
-      : <ChevronDown className="w-3 h-3 ml-0.5 inline text-gray-700" />;
+      ? <ChevronUp className="w-3 h-3 ml-0.5 inline text-slate-700" />
+      : <ChevronDown className="w-3 h-3 ml-0.5 inline text-slate-700" />;
   };
 
   const renderDataRow = (row: UnifiedRow, globalIdx: number) => {
-    const stripe = globalIdx % 2 === 1 ? 'bg-gray-50/60' : 'bg-white';
-    const pillClass = STATUS_PILL[row.statusLabel] || 'bg-gray-50 text-gray-600 border border-gray-200';
+    const stripe = globalIdx % 2 === 1 ? 'bg-slate-50/60' : 'bg-white';
+    const pillClass = STATUS_PILL[row.statusLabel] || 'bg-slate-50 text-slate-600 border border-slate-200';
 
     return (
       <tr
         key={`${row.type}-${row.id}`}
         onClick={() => handleRowClick(row)}
-        className={`border-b border-gray-100 cursor-pointer transition-colors hover:bg-blue-50/50 ${stripe}`}
+        className={`border-b border-slate-100 cursor-pointer transition-colors hover:bg-blue-50/50 ${stripe}`}
       >
-        <td className="py-2.5 px-3 text-gray-400 text-xs font-mono border-r border-gray-100 text-center">{globalIdx + 1}</td>
-        <td className="py-2.5 px-3 border-r border-gray-100">
+        <td className="py-2.5 px-3 text-slate-400 text-xs font-mono border-r border-slate-100 text-center">{globalIdx + 1}</td>
+        <td className="py-2.5 px-3 border-r border-slate-100">
           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
             row.type === 'note' ? 'bg-violet-50 text-violet-700 border border-violet-200' : 'bg-sky-50 text-sky-700 border border-sky-200'
           }`}>
             {row.type === 'note' ? 'Kayıt' : 'Plan'}
           </span>
         </td>
-        <td className="py-2.5 px-3 border-r border-gray-100 font-medium text-gray-900 max-w-[220px] truncate">{row.projectName || '–'}</td>
-        <td className="py-2.5 px-3 border-r border-gray-100 text-gray-600 font-mono text-xs">{row.adaParsel || '–'}</td>
-        <td className="py-2.5 px-3 border-r border-gray-100 text-gray-700 text-xs">{row.kategori || '–'}</td>
-        <td className="py-2.5 px-3 border-r border-gray-100 text-gray-700 max-w-[280px] truncate">{row.konu || '–'}</td>
-        <td className="py-2.5 px-3 border-r border-gray-100">
+        <td className="py-2.5 px-3 border-r border-slate-100 font-medium text-slate-800 max-w-[220px] truncate">{row.projectName || '–'}</td>
+        <td className="py-2.5 px-3 border-r border-slate-100 text-slate-500 font-mono text-xs">{row.adaParsel || '–'}</td>
+        <td className="py-2.5 px-3 border-r border-slate-100 text-slate-700 text-xs">{row.kategori || '–'}</td>
+        <td className="py-2.5 px-3 border-r border-slate-100 text-slate-700 max-w-[280px] truncate">{row.konu || '–'}</td>
+        <td className="py-2.5 px-3 border-r border-slate-100">
           <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap ${pillClass}`}>
             {row.statusLabel}
           </span>
         </td>
-        <td className="py-2.5 px-3 border-r border-gray-100 text-gray-600 font-mono text-xs whitespace-nowrap">{row.tarihDisplay}</td>
+        <td className="py-2.5 px-3 border-r border-slate-100 text-slate-500 font-mono text-xs whitespace-nowrap">{row.tarihDisplay}</td>
         <td className="py-2.5 px-3" onClick={e => e.stopPropagation()}>
           <div className="flex items-center gap-0.5">
             {row.note && canEditNote(row.note) && (
               <button onClick={() => handleEditNote(row.note!)}
-                className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+                className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
                 title="Düzenle"
               ><Pencil className="w-3.5 h-3.5" /></button>
             )}
             {row.note && canDeleteNote(row.note) && (
               <button onClick={() => handleDeleteNote(row.note!)}
-                className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                className="p-1.5 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
                 title="Sil"
               ><Trash2 className="w-3.5 h-3.5" /></button>
             )}
@@ -363,16 +360,16 @@ const TablePage: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen transition-colors ${isDark ? 'bg-slate-950' : 'bg-gray-100'}`}>
+    <div className="min-h-screen bg-slate-50 transition-colors">
       {/* Header */}
-      <header className={`sticky top-0 z-40 border-b transition-colors ${isDark ? 'bg-slate-900/95 backdrop-blur-md border-slate-800' : 'bg-white/95 backdrop-blur-md border-gray-200 shadow-sm'}`}>
+      <header className="sticky top-0 z-40 border-b bg-white/95 backdrop-blur-md border-slate-200 shadow-sm transition-colors">
         <div className="px-5 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <FileSpreadsheet className={`w-5 h-5 ${isDark ? 'text-safety-orange' : 'text-safety-orange-dark'}`} />
+              <FileSpreadsheet className="w-5 h-5 text-brand" />
               <div>
-                <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Master Proje Günlüğü</h1>
-                <p className={`text-xs ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>
+                <h1 className="text-lg font-bold text-slate-800">Master Proje Günlüğü</h1>
+                <p className="text-xs text-slate-500">
                   {sortedRows.length} kayıt ({notes.length} not + {tasks.length} görev)
                   {hasActiveFilter ? ' · filtrelenmiş' : ''}
                 </p>
@@ -383,8 +380,8 @@ const TablePage: React.FC = () => {
                 onClick={() => setGroupByKategori(g => !g)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
                   groupByKategori
-                    ? 'bg-safety-orange/10 border-safety-orange/30 text-safety-orange'
-                    : isDark ? 'border-slate-600 text-concrete-400 hover:text-white hover:border-slate-500' : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                    ? 'bg-brand/10 border-brand/30 text-brand'
+                    : 'border-slate-200 text-slate-500 hover:bg-slate-50'
                 }`}
               >
                 <Layers className="w-4 h-4" />
@@ -393,9 +390,7 @@ const TablePage: React.FC = () => {
               <button
                 onClick={handleExport}
                 disabled={sortedRows.length === 0}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
-                  isDark ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30 border border-green-600/30' : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
-                }`}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"
               >
                 <Download className="w-4 h-4" />
                 Excel'e Aktar
@@ -413,7 +408,7 @@ const TablePage: React.FC = () => {
         {/* Active filter chips */}
         {hasActiveFilter && (
           <div className="mb-3 flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-gray-500 font-medium">Filtreler:</span>
+            <span className="text-xs text-slate-500 font-medium">Filtreler:</span>
             {filters.type && <FilterChip label={`Tür: ${filters.type === 'note' ? 'Kayıt' : 'Plan'}`} onClear={() => setFilters(f => ({ ...f, type: '' }))} />}
             {filters.project && <FilterChip label={`Proje: ${filters.project}`} onClear={() => setFilters(f => ({ ...f, project: '' }))} />}
             {filters.adaParsel && <FilterChip label={`Ada/Parsel: ${filters.adaParsel}`} onClear={() => setFilters(f => ({ ...f, adaParsel: '' }))} />}
@@ -426,13 +421,13 @@ const TablePage: React.FC = () => {
         )}
 
         {/* ---- Excel-style Table ---- */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1000px] text-sm border-collapse">
               <thead className="sticky top-0 z-10">
                 {/* Column headers */}
-                <tr className="bg-gray-50 border-b-2 border-gray-200">
-                  <th className="py-3 px-3 text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider border-r border-gray-200 w-12">#</th>
+                <tr className="bg-slate-50 border-b-2 border-slate-200">
+                  <th className="py-3 px-3 text-center text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-r border-slate-200 w-12">#</th>
                   <th className={thBase} onClick={() => handleSort('type')} style={{ width: 80 }}>Tür<SortArrow field="type" /></th>
                   <th className={thBase} onClick={() => handleSort('projectName')}>Proje Adı<SortArrow field="projectName" /></th>
                   <th className={thBase} onClick={() => handleSort('adaParsel')} style={{ width: 110 }}>Ada/Parsel<SortArrow field="adaParsel" /></th>
@@ -440,35 +435,35 @@ const TablePage: React.FC = () => {
                   <th className={thBase} onClick={() => handleSort('konu')}>Konu<SortArrow field="konu" /></th>
                   <th className={thBase} onClick={() => handleSort('status')} style={{ width: 130 }}>Durum<SortArrow field="status" /></th>
                   <th className={thBase} onClick={() => handleSort('tarih')} style={{ width: 110 }}>Tarih<SortArrow field="tarih" /></th>
-                  <th className="py-3 px-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-20">İşlem</th>
+                  <th className="py-3 px-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider w-20">İşlem</th>
                 </tr>
 
                 {/* Inline filter row */}
-                <tr className="bg-gray-50/70 border-b border-gray-200">
-                  <td className="py-1.5 px-2 border-r border-gray-200" />
-                  <td className="py-1.5 px-2 border-r border-gray-200">
+                <tr className="bg-slate-50/70 border-b border-slate-200">
+                  <td className="py-1.5 px-2 border-r border-slate-200" />
+                  <td className="py-1.5 px-2 border-r border-slate-200">
                     <select value={filters.type} onChange={e => setFilters(f => ({ ...f, type: e.target.value as '' | 'note' | 'task' }))} className={filterInputClass}>
                       <option value="">Tümü</option>
                       <option value="note">Kayıt</option>
                       <option value="task">Plan</option>
                     </select>
                   </td>
-                  <td className="py-1.5 px-2 border-r border-gray-200">
+                  <td className="py-1.5 px-2 border-r border-slate-200">
                     <input type="text" value={filters.project} onChange={e => setFilters(f => ({ ...f, project: e.target.value }))} placeholder="Ara..." className={filterInputClass} />
                   </td>
-                  <td className="py-1.5 px-2 border-r border-gray-200">
+                  <td className="py-1.5 px-2 border-r border-slate-200">
                     <input type="text" value={filters.adaParsel} onChange={e => setFilters(f => ({ ...f, adaParsel: e.target.value }))} placeholder="Ara..." className={filterInputClass} />
                   </td>
-                  <td className="py-1.5 px-2 border-r border-gray-200">
+                  <td className="py-1.5 px-2 border-r border-slate-200">
                     <select value={filters.kategori} onChange={e => setFilters(f => ({ ...f, kategori: e.target.value }))} className={filterInputClass}>
                       <option value="">Tümü</option>
                       {distinctKategoriler.map(k => <option key={k} value={k}>{k}</option>)}
                     </select>
                   </td>
-                  <td className="py-1.5 px-2 border-r border-gray-200">
+                  <td className="py-1.5 px-2 border-r border-slate-200">
                     <input type="text" value={filters.konu} onChange={e => setFilters(f => ({ ...f, konu: e.target.value }))} placeholder="Ara..." className={filterInputClass} />
                   </td>
-                  <td className="py-1.5 px-2 border-r border-gray-200">
+                  <td className="py-1.5 px-2 border-r border-slate-200">
                     <select value={filters.status} onChange={e => setFilters(f => ({ ...f, status: e.target.value }))} className={filterInputClass}>
                       <option value="">Tümü</option>
                       <option value="Beklemede">Beklemede</option>
@@ -479,7 +474,7 @@ const TablePage: React.FC = () => {
                       <option value="Tamamlandı">Tamamlandı</option>
                     </select>
                   </td>
-                  <td className="py-1.5 px-2 border-r border-gray-200">
+                  <td className="py-1.5 px-2 border-r border-slate-200">
                     <input type="date" value={filters.tarih} onChange={e => setFilters(f => ({ ...f, tarih: e.target.value }))} className={filterInputClass} />
                   </td>
                   <td className="py-1.5 px-2" />
@@ -490,12 +485,12 @@ const TablePage: React.FC = () => {
                 {groupByKategori && groupedWithIndices ? (
                   groupedWithIndices.map(({ kategori, indexedRows }) => (
                     <React.Fragment key={kategori}>
-                      <tr className="bg-gray-100/80 border-b border-gray-200">
+                      <tr className="bg-slate-100/80 border-b border-slate-200">
                         <td colSpan={COL_SPAN} className="py-2.5 px-4">
-                          <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                            <Layers className="w-3.5 h-3.5 text-gray-400" />
+                          <span className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                            <Layers className="w-3.5 h-3.5 text-slate-400" />
                             {kategori}
-                            <span className="text-xs font-normal text-gray-400 ml-1">({indexedRows.length} kayıt)</span>
+                            <span className="text-xs font-normal text-slate-400 ml-1">({indexedRows.length} kayıt)</span>
                           </span>
                         </td>
                       </tr>
@@ -503,7 +498,7 @@ const TablePage: React.FC = () => {
                     </React.Fragment>
                   ))
                 ) : sortedRows.length === 0 ? (
-                  <tr><td colSpan={COL_SPAN} className="py-16 text-center text-gray-400">Henüz kayıt bulunmuyor</td></tr>
+                  <tr><td colSpan={COL_SPAN} className="py-16 text-center text-slate-400">Henüz kayıt bulunmuyor</td></tr>
                 ) : (
                   sortedRows.map((row, idx) => renderDataRow(row, idx))
                 )}

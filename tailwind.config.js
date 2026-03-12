@@ -4,10 +4,15 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  darkMode: 'class',
+  darkMode: false,
   theme: {
     extend: {
       colors: {
+        brand: {
+          DEFAULT: '#2c3e50',
+          light: '#3b536b',
+          dark: '#1e2b38',
+        },
         slate: {
           850: '#1a2332',
           950: '#0d1117'

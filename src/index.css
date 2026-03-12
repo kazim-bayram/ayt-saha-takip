@@ -11,15 +11,9 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Light mode (default) */
 body {
-  @apply bg-gray-50 text-gray-900 antialiased;
+  @apply bg-slate-50 text-slate-800 antialiased;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-}
-
-/* Dark mode */
-.dark body {
-  @apply bg-slate-950 text-concrete-100;
 }
 
 /* Custom scrollbar for webkit browsers */
@@ -29,33 +23,21 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-gray-200;
-}
-
-.dark ::-webkit-scrollbar-track {
-  @apply bg-slate-900;
+  @apply bg-slate-100;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-400 rounded-full;
-}
-
-.dark ::-webkit-scrollbar-thumb {
-  @apply bg-slate-700;
+  @apply bg-slate-300 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-500;
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-600;
+  @apply bg-slate-400;
 }
 
 /* Input styles for touch-friendly interfaces */
 input, textarea, select, button {
   @apply touch-manipulation;
-  font-size: 16px; /* Prevents iOS zoom on focus */
+  font-size: 16px;
 }
 
 /* Loading skeleton animation */
@@ -71,22 +53,12 @@ input, textarea, select, button {
 .skeleton {
   background: linear-gradient(
     90deg,
-    rgba(0, 0, 0, 0.05) 25%,
-    rgba(0, 0, 0, 0.1) 50%,
-    rgba(0, 0, 0, 0.05) 75%
+    rgba(0, 0, 0, 0.04) 25%,
+    rgba(0, 0, 0, 0.08) 50%,
+    rgba(0, 0, 0, 0.04) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
-}
-
-.dark .skeleton {
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.05) 25%,
-    rgba(255, 255, 255, 0.1) 50%,
-    rgba(255, 255, 255, 0.05) 75%
-  );
-  background-size: 200% 100%;
 }
 
 /* Masonry layout support */
@@ -100,17 +72,6 @@ input, textarea, select, button {
   .masonry-grid {
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   }
-}
-
-/* Safety tape pattern for decorative elements */
-.safety-tape {
-  background: repeating-linear-gradient(
-    45deg,
-    #FFB800,
-    #FFB800 10px,
-    #1a2332 10px,
-    #1a2332 20px
-  );
 }
 
 /* Industrial button hover effect */
@@ -129,14 +90,10 @@ input, textarea, select, button {
 
 /* Focus ring for accessibility */
 .focus-ring {
-  @apply focus:outline-none focus:ring-2 focus:ring-safety-orange focus:ring-offset-2;
-}
-
-.dark .focus-ring {
-  @apply focus:ring-offset-slate-900;
+  @apply focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2;
 }
 
 /* Card hover effect */
 .card-hover {
-  @apply transition-all duration-200 hover:shadow-industrial-lg hover:-translate-y-0.5;
+  @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
 }

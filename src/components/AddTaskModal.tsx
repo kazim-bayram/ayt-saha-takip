@@ -37,9 +37,7 @@ interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: CreateTaskInput) => Promise<void>;
-  /** When provided, the modal opens in edit mode and pre-fills all fields */
   taskToEdit?: WeeklyTask | null;
-  /** Called when in edit mode */
   onUpdate?: (taskId: string, data: Partial<Omit<WeeklyTask, 'id' | 'createdAt'>>) => Promise<void>;
   isDark: boolean;
 }
@@ -50,7 +48,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   onSubmit,
   taskToEdit,
   onUpdate,
-  isDark,
+  isDark: _isDark,
 }) => {
   const { getAllUsers } = useAuth();
 
@@ -179,11 +177,10 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
   const inputBase =
     'w-full rounded-lg px-3.5 py-2.5 text-sm transition-all border focus:outline-none focus:ring-2';
-  const inputTheme = isDark
-    ? 'bg-slate-800 border-slate-600 text-white placeholder-slate-500 focus:ring-blue-500/40 focus:border-blue-500'
-    : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:ring-blue-500/30 focus:border-blue-500';
+  const inputTheme =
+    'bg-white border-slate-200 text-slate-800 placeholder-slate-400 focus:ring-blue-500/30 focus:border-blue-500';
   const inputClass = `${inputBase} ${inputTheme}`;
-  const labelClass = `flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide mb-1.5 ${isDark ? 'text-slate-400' : 'text-gray-500'}`;
+  const labelClass = 'flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide mb-1.5 text-slate-500';
 
   return (
     <div
@@ -196,32 +193,24 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
       }}
     >
       <div
-        className={`rounded-2xl w-full max-w-2xl shadow-2xl border max-h-[92vh] overflow-y-auto ${
-          isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-gray-200'
-        }`}
+        className="rounded-2xl w-full max-w-2xl shadow-2xl border max-h-[92vh] overflow-y-auto bg-white border-slate-200"
       >
         {/* Header */}
         <div
-          className={`flex items-center justify-between px-6 py-4 border-b ${
-            isDark ? 'border-slate-700/60' : 'border-gray-100'
-          }`}
+          className="flex items-center justify-between px-6 py-4 border-b border-slate-200"
         >
           <div>
-            <h2 className={`text-lg font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            <h2 className="text-lg font-bold flex items-center gap-2 text-slate-800">
               {isEditMode ? <><Edit3 className="w-5 h-5" /> Görevi Düzenle</> : 'Yeni Görev Oluştur'}
             </h2>
-            <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
+            <p className="text-xs mt-0.5 text-slate-400">
               {isEditMode ? 'Tüm alanları güncelleyebilirsiniz' : 'İş planına yeni bir görev ekleyin'}
             </p>
           </div>
           <button
             onClick={() => { resetForm(); onClose(); }}
             disabled={saving}
-            className={`p-2 rounded-lg transition-colors ${
-              isDark
-                ? 'text-slate-400 hover:text-white hover:bg-slate-700'
-                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-            }`}
+            className="p-2 rounded-lg transition-colors text-slate-400 hover:text-slate-600 hover:bg-slate-100"
           >
             <X className="w-5 h-5" />
           </button>
@@ -230,19 +219,19 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
         {/* Body */}
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
           {error && (
-            <div className="p-3 rounded-lg flex items-center gap-3 bg-red-500/10 border border-red-500/30">
-              <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-              <p className="text-red-400 text-sm">{error}</p>
+            <div className="p-3 rounded-lg flex items-center gap-3 bg-red-50 border border-red-200">
+              <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+              <p className="text-red-700 text-sm">{error}</p>
             </div>
           )}
           {successMsg && (
-            <div className="p-3 rounded-lg flex items-center gap-3 bg-green-500/10 border border-green-500/30">
-              <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
-              <p className="text-green-400 text-sm">{successMsg}</p>
+            <div className="p-3 rounded-lg flex items-center gap-3 bg-green-50 border border-green-200">
+              <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+              <p className="text-green-700 text-sm">{successMsg}</p>
             </div>
           )}
 
-          {/* Row 1 — Task Title (full width) */}
+          {/* Row 1 — Task Title */}
           <div>
             <label className={labelClass}>
               <Briefcase className="w-3.5 h-3.5" />
@@ -373,14 +362,8 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
                     disabled={saving}
                     className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-all border ${
                       priority === opt.value
-                        ? `ring-2 ${opt.ring} ${
-                            isDark
-                              ? 'bg-slate-700 border-slate-600 text-white'
-                              : 'bg-gray-50 border-gray-300 text-gray-900'
-                          }`
-                        : isDark
-                          ? 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'
-                          : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                        ? `ring-2 ${opt.ring} bg-slate-50 border-slate-300 text-slate-800`
+                        : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
                     }`}
                   >
                     <span className={`w-2 h-2 rounded-full ${opt.dot}`} />
@@ -441,14 +424,14 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
                       color === opt.value
                         ? 'ring-2 ring-offset-2 ring-blue-500'
                         : 'opacity-50 hover:opacity-100'
-                    } ${isDark ? 'ring-offset-slate-900' : 'ring-offset-white'}`}
+                    } ring-offset-white`}
                   />
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Row 6 — Description (full width) */}
+          {/* Row 6 — Description */}
           <div>
             <label className={labelClass}>
               <FileText className="w-3.5 h-3.5" />
@@ -466,19 +449,13 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
           {/* Footer */}
           <div
-            className={`flex items-center justify-between pt-3 border-t ${
-              isDark ? 'border-slate-700/60' : 'border-gray-100'
-            }`}
+            className="flex items-center justify-between pt-3 border-t border-slate-100"
           >
             <button
               type="button"
               onClick={() => { resetForm(); onClose(); }}
               disabled={saving}
-              className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isDark
-                  ? 'text-slate-400 hover:text-white hover:bg-slate-700'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-              }`}
+              className="px-4 py-2.5 rounded-lg text-sm font-medium transition-colors text-slate-500 hover:text-slate-700 hover:bg-slate-100"
             >
               İptal
             </button>
@@ -488,7 +465,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
               className={`flex items-center gap-2 text-white font-semibold text-sm py-2.5 px-5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                 isEditMode
                   ? 'bg-emerald-600 hover:bg-emerald-700'
-                  : 'bg-blue-600 hover:bg-blue-700'
+                  : 'bg-brand hover:bg-brand-light'
               }`}
             >
               {saving ? (

@@ -27,14 +27,13 @@ const STATUS_DOT: Record<TaskStatus, string> = {
 };
 
 const MonthlyView: React.FC<MonthlyViewProps> = ({
-  tasks, notes, year, month, onPrevMonth, onNextMonth, onToday, isDark, onItemClick
+  tasks, notes, year, month, onPrevMonth, onNextMonth, onToday, onItemClick
 }) => {
   const calendarData = useMemo(() => {
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
 
-    // Monday-based: 0=Mon … 6=Sun
     let startWeekday = firstDay.getDay() - 1;
     if (startWeekday < 0) startWeekday = 6;
 
@@ -43,7 +42,6 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({
       ...notes.map(noteToTimelineItem),
     ];
 
-    // Build map: dayOfMonth -> items[]
     const dayMap = new Map<number, TimelineItem[]>();
     items.forEach(item => {
       const d = item.date;
@@ -54,7 +52,6 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({
       }
     });
 
-    // Build grid rows
     const cells: { day: number | null; items: TimelineItem[] }[] = [];
     for (let i = 0; i < startWeekday; i++) cells.push({ day: null, items: [] });
     for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d, items: dayMap.get(d) || [] });
@@ -74,25 +71,23 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={onPrevMonth}
-            className={`p-2 rounded-lg transition-colors ${isDark ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50' : 'text-gray-600 hover:bg-gray-100'}`}
+            className="p-2 rounded-lg transition-colors text-slate-500 hover:bg-slate-100"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          <h2 className="text-lg font-bold text-slate-800">
             {MONTHS_TR[month]} {year}
           </h2>
           <button
             onClick={onNextMonth}
-            className={`p-2 rounded-lg transition-colors ${isDark ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50' : 'text-gray-600 hover:bg-gray-100'}`}
+            className="p-2 rounded-lg transition-colors text-slate-500 hover:bg-slate-100"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
         <button
           onClick={onToday}
-          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            isDark ? 'bg-slate-700/50 text-white hover:bg-slate-700' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-          }`}
+          className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-800 hover:bg-slate-200"
         >
           Bugün
         </button>
@@ -101,14 +96,14 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({
       {/* Day headers */}
       <div className="grid grid-cols-7 mb-1">
         {DAYS_TR.map(d => (
-          <div key={d} className={`text-center text-xs font-semibold py-2 ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>
+          <div key={d} className="text-center text-xs font-semibold py-2 text-slate-500">
             {d}
           </div>
         ))}
       </div>
 
       {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-px rounded-xl overflow-hidden border ${isDark ? 'border-slate-700/50 bg-slate-700/30' : 'border-gray-200 bg-gray-200'}">
+      <div className="grid grid-cols-7 gap-px rounded-xl overflow-hidden border border-slate-200 bg-slate-200">
         {calendarData.map((cell, i) => {
           const isToday = isThisMonth && cell.day === today.getDate();
           return (
@@ -116,16 +111,16 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({
               key={i}
               className={`min-h-[100px] p-1.5 transition-colors ${
                 cell.day
-                  ? isDark ? 'bg-slate-900/80 hover:bg-slate-800' : 'bg-white hover:bg-gray-50'
-                  : isDark ? 'bg-slate-950/50' : 'bg-gray-50'
+                  ? 'bg-white hover:bg-slate-50'
+                  : 'bg-slate-50'
               }`}
             >
               {cell.day && (
                 <>
                   <span className={`inline-flex items-center justify-center w-6 h-6 text-xs font-semibold rounded-full ${
                     isToday
-                      ? 'bg-safety-orange text-white'
-                      : isDark ? 'text-concrete-300' : 'text-gray-700'
+                      ? 'bg-brand text-white'
+                      : 'text-slate-700'
                   }`}>
                     {cell.day}
                   </span>
@@ -134,19 +129,17 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({
                       <button
                         key={item.id}
                         onClick={() => onItemClick(item)}
-                        className={`w-full flex items-center gap-1 px-1 py-0.5 rounded text-[10px] truncate transition-colors ${
-                          isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-100'
-                        }`}
+                        className="w-full flex items-center gap-1 px-1 py-0.5 rounded text-[10px] truncate transition-colors hover:bg-slate-100"
                         title={item.title}
                       >
                         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${STATUS_DOT[item.status]}`} />
-                        <span className={`truncate ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                        <span className="truncate text-slate-700">
                           {item.source === 'note' ? '📋' : ''} {item.title}
                         </span>
                       </button>
                     ))}
                     {cell.items.length > 3 && (
-                      <span className={`text-[9px] px-1 ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>
+                      <span className="text-[9px] px-1 text-slate-400">
                         +{cell.items.length - 3} daha
                       </span>
                     )}

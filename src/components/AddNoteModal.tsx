@@ -10,7 +10,6 @@ import {
   Plus,
   Layers
 } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
 import { NoteFormData, Note, NoteStatus, UploadProgress, getNoteImages, normalizeStatus, FormField, FormFieldType, getNoteFieldValue } from '../types';
 import { useNoteSchema } from '../hooks/useNoteSchema';
 
@@ -36,7 +35,6 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
   editNote,
   uploadProgress
 }) => {
-  const { isDark } = useTheme();
   const { schema, loading: schemaLoading } = useNoteSchema();
   const [content, setContent] = useState('');
   const [projectName, setProjectName] = useState('');
@@ -52,7 +50,6 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
 
   const fields = [...schema.fields].sort((a, b) => a.order - b.order);
 
-  // Populate form when editing or reset when adding
   useEffect(() => {
     if (!isOpen) return;
     if (editNote) {
@@ -241,24 +238,18 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
       onClick={handleBackdropClick}
     >
       <div
-        className={`rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-hidden shadow-2xl border animate-slide-up ${
-          isDark ? 'bg-slate-850 border-slate-700/50' : 'bg-white border-gray-200'
-        }`}
+        className="rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-hidden shadow-2xl border animate-slide-up bg-white border-slate-200"
       >
         <div
-          className={`flex items-center justify-between p-4 border-b ${
-            isDark ? 'border-slate-700/50' : 'border-gray-200'
-          }`}
+          className="flex items-center justify-between p-4 border-b border-slate-200"
         >
-          <h2 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          <h2 className="text-xl font-semibold text-slate-800">
             {editNote ? 'Kaydı Düzenle' : 'Saha Kaydı Oluştur'}
           </h2>
           <button
             onClick={onClose}
             disabled={submitting}
-            className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
-              isDark ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-            }`}
+            className="p-2 rounded-lg transition-colors disabled:opacity-50 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
           >
             <X className="w-5 h-5" />
           </button>
@@ -267,16 +258,16 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
         <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(90vh-140px)]">
           <div className="p-4 space-y-5">
             {error && (
-              <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                <p className="text-red-300 text-sm">{error}</p>
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-red-700 text-sm">{error}</p>
               </div>
             )}
 
-            {/* Photos - Core */}
+            {/* Photos */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className={`block text-sm font-medium ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+                <label className="block text-sm font-medium text-slate-700">
                   <span className="flex items-center gap-2">
                     <Layers className="w-4 h-4" />
                     Fotoğraflar {totalImages > 0 && `(${totalImages}/${MAX_IMAGES})`}
@@ -286,23 +277,23 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
                   <button
                     type="button"
                     onClick={clearAllImages}
-                    className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                    className="text-xs text-red-500 hover:text-red-700 transition-colors"
                   >
                     Tümünü Temizle
                   </button>
                 )}
               </div>
               {uploadProgress && (
-                <div className={`mb-3 p-3 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-blue-50'}`}>
+                <div className="mb-3 p-3 rounded-xl bg-blue-50">
                   <div className="flex items-center justify-between mb-2">
-                    <span className={`text-sm font-medium ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
+                    <span className="text-sm font-medium text-blue-700">
                       Yükleniyor {uploadProgress.current}/{uploadProgress.total}...
                     </span>
-                    <span className={`text-sm ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                    <span className="text-sm text-blue-600">
                       %{uploadProgress.percentage}
                     </span>
                   </div>
-                  <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-blue-200'}`}>
+                  <div className="h-2 rounded-full overflow-hidden bg-blue-200">
                     <div
                       className="h-full bg-blue-500 transition-all duration-300"
                       style={{ width: `${uploadProgress.percentage}%` }}
@@ -315,7 +306,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
                   {existingImages.map((url, i) => (
                     <div
                       key={`existing-${i}`}
-                      className={`relative aspect-square rounded-lg overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-gray-100'}`}
+                      className="relative aspect-square rounded-lg overflow-hidden bg-slate-100"
                     >
                       <img src={url} alt={`Mevcut ${i + 1}`} className="w-full h-full object-cover" />
                       <button
@@ -330,7 +321,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
                   {imagePreviews.map((preview, i) => (
                     <div
                       key={`new-${i}`}
-                      className={`relative aspect-square rounded-lg overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-gray-100'}`}
+                      className="relative aspect-square rounded-lg overflow-hidden bg-slate-100"
                     >
                       <img src={preview.previewUrl} alt={`Yeni ${i + 1}`} className="w-full h-full object-cover" />
                       <button
@@ -346,11 +337,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className={`aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center transition-colors ${
-                        isDark
-                          ? 'border-slate-600 hover:border-safety-orange text-concrete-400 hover:text-safety-orange'
-                          : 'border-gray-300 hover:border-safety-orange text-gray-400 hover:text-safety-orange'
-                      }`}
+                      className="aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center transition-colors border-slate-200 hover:border-brand text-slate-400 hover:text-brand"
                     >
                       <Plus className="w-6 h-6" />
                       <span className="text-[10px] mt-1">Ekle</span>
@@ -363,24 +350,20 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
                   <button
                     type="button"
                     onClick={() => cameraInputRef.current?.click()}
-                    className={`flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-xl transition-colors group ${
-                      isDark ? 'border-slate-600 hover:border-safety-orange' : 'border-gray-300 hover:border-safety-orange'
-                    }`}
+                    className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-xl transition-colors group border-slate-200 hover:border-brand"
                   >
-                    <Camera className={`w-8 h-8 mb-2 ${isDark ? 'text-concrete-400' : 'text-gray-400'} group-hover:text-safety-orange`} />
-                    <span className={`text-sm font-medium ${isDark ? 'text-concrete-400' : 'text-gray-500'} group-hover:text-safety-orange`}>
+                    <Camera className="w-8 h-8 mb-2 text-slate-400 group-hover:text-brand" />
+                    <span className="text-sm font-medium text-slate-400 group-hover:text-brand">
                       Fotoğraf Çek
                     </span>
                   </button>
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className={`flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-xl transition-colors group ${
-                      isDark ? 'border-slate-600 hover:border-safety-orange' : 'border-gray-300 hover:border-safety-orange'
-                    }`}
+                    className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-xl transition-colors group border-slate-200 hover:border-brand"
                   >
-                    <Upload className={`w-8 h-8 mb-2 ${isDark ? 'text-concrete-400' : 'text-gray-400'} group-hover:text-safety-orange`} />
-                    <span className={`text-sm font-medium ${isDark ? 'text-concrete-400' : 'text-gray-500'} group-hover:text-safety-orange`}>
+                    <Upload className="w-8 h-8 mb-2 text-slate-400 group-hover:text-brand" />
+                    <span className="text-sm font-medium text-slate-400 group-hover:text-brand">
                       Resim Yükle
                     </span>
                   </button>
@@ -395,32 +378,28 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
                 className="hidden"
               />
               <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" />
-              <p className={`text-xs mt-2 flex items-center gap-1 ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>
+              <p className="text-xs mt-2 flex items-center gap-1 text-slate-500">
                 <ImageIcon className="w-3.5 h-3.5" />
                 Birden fazla fotoğraf seçebilirsiniz (max 4, her biri max 10MB)
               </p>
             </div>
 
-            {/* Project Name - Core */}
+            {/* Project Name */}
             <div>
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>Proje Adı *</label>
+              <label className="block text-sm font-medium mb-2 text-slate-700">Proje Adı *</label>
               <input
                 type="text"
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
                 placeholder="Örn: A Blok - Temel İmalatı"
-                className={`w-full rounded-xl px-4 py-4 transition-all focus:outline-none focus:ring-2 focus:ring-safety-orange/20 ${
-                  isDark
-                    ? 'bg-slate-900/50 border border-slate-600 text-white placeholder-concrete-500 focus:border-safety-orange'
-                    : 'bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-400 focus:border-safety-orange'
-                }`}
+                className="w-full rounded-xl px-4 py-4 transition-all focus:outline-none focus:ring-2 focus:ring-brand/20 bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:border-brand"
                 required
               />
             </div>
 
             {/* Dynamic fields from schema */}
             {schemaLoading ? (
-              <div className="flex items-center gap-2 text-concrete-400 text-sm">
+              <div className="flex items-center gap-2 text-slate-400 text-sm">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Form alanları yükleniyor...
               </div>
@@ -439,24 +418,23 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
                     field={effectiveField}
                     value={formData[field.id] ?? (field.type === 'checkbox' ? false : field.type === 'date' ? new Date().toISOString().split('T')[0] : field.type === 'multiselect' ? [] : '')}
                     onChange={(v) => setFieldValue(field.id, v)}
-                    isDark={isDark}
                     disabled={field.id === 'alt_kategori' && !formData['kategori']}
                   />
                 );
               })
             )}
 
-            {/* Status - Core */}
+            {/* Status */}
             <div>
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>Durum *</label>
-              <div className={`grid grid-cols-3 gap-2 p-1 rounded-xl ${isDark ? 'bg-slate-900/50' : 'bg-gray-100'}`}>
+              <label className="block text-sm font-medium mb-2 text-slate-700">Durum *</label>
+              <div className="grid grid-cols-3 gap-2 p-1 rounded-xl bg-slate-100">
                 <button
                   type="button"
                   onClick={() => setStatus('Beklemede')}
                   className={`flex items-center justify-center gap-2 px-3 py-3 rounded-lg text-sm font-semibold transition-all ${
                     status === 'Beklemede'
                       ? 'bg-amber-500 text-white shadow-md'
-                      : isDark ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50' : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-white/60'
                   }`}
                 >
                   <span>🟡</span> Beklemede
@@ -467,7 +445,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
                   className={`flex items-center justify-center gap-2 px-3 py-3 rounded-lg text-sm font-semibold transition-all ${
                     status === 'Onay'
                       ? 'bg-green-500 text-white shadow-md'
-                      : isDark ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50' : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-white/60'
                   }`}
                 >
                   <span>🟢</span> Onay
@@ -478,7 +456,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
                   className={`flex items-center justify-center gap-2 px-3 py-3 rounded-lg text-sm font-semibold transition-all ${
                     status === 'Olumsuz Sonuç'
                       ? 'bg-red-500 text-white shadow-md'
-                      : isDark ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50' : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-white/60'
                   }`}
                 >
                   <span>🔴</span> Olumsuz
@@ -486,9 +464,9 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
               </div>
             </div>
 
-            {/* Content (Açıklama) - Core */}
+            {/* Content (Açıklama) */}
             <div>
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+              <label className="block text-sm font-medium mb-2 text-slate-700">
                 <span className="flex items-center gap-2">
                   <FileText className="w-4 h-4" />
                   Açıklama
@@ -499,30 +477,24 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="İmalatı, konumu ve ilgili teknik detayları yazın..."
                 rows={5}
-                className={`w-full rounded-xl px-4 py-4 transition-all focus:outline-none focus:ring-2 focus:ring-safety-orange/20 resize-none ${
-                  isDark
-                    ? 'bg-slate-900/50 border border-slate-600 text-white placeholder-concrete-500 focus:border-safety-orange'
-                    : 'bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-400 focus:border-safety-orange'
-                }`}
+                className="w-full rounded-xl px-4 py-4 transition-all focus:outline-none focus:ring-2 focus:ring-brand/20 resize-none bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:border-brand"
               />
             </div>
           </div>
 
-          <div className={`flex gap-3 p-4 border-t ${isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-gray-200 bg-gray-50'}`}>
+          <div className="flex gap-3 p-4 border-t border-slate-200 bg-slate-50">
             <button
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className={`flex-1 px-6 py-4 border rounded-xl font-medium transition-colors disabled:opacity-50 ${
-                isDark ? 'border-slate-600 text-concrete-300 hover:text-white hover:bg-slate-700/50' : 'border-gray-300 text-gray-600 hover:text-gray-800 hover:bg-gray-100'
-              }`}
+              className="flex-1 px-6 py-4 border rounded-xl font-medium transition-colors disabled:opacity-50 border-slate-200 text-slate-600 hover:bg-slate-50"
             >
               İptal
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 px-6 py-4 bg-gradient-to-r from-safety-orange to-safety-orange-dark hover:from-safety-orange-dark hover:to-safety-orange text-white font-semibold rounded-xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+              className="flex-1 px-6 py-4 bg-brand hover:bg-brand-light text-white font-semibold rounded-xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
             >
               {submitting ? (
                 <>
@@ -540,25 +512,18 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
   );
 };
 
-/** Renders a single dynamic form field based on FormField config */
 function DynamicFieldInput({
   field,
   value,
   onChange,
-  isDark,
   disabled
 }: {
   field: FormField;
   value: any;
   onChange: (v: any) => void;
-  isDark: boolean;
   disabled?: boolean;
 }) {
-  const baseInputClass = `w-full rounded-xl px-4 py-3 transition-all focus:outline-none focus:ring-2 focus:ring-safety-orange/20 ${
-    isDark
-      ? 'bg-slate-900/50 border border-slate-600 text-white placeholder-concrete-500 focus:border-safety-orange'
-      : 'bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-400 focus:border-safety-orange'
-  }`;
+  const baseInputClass = 'w-full rounded-xl px-4 py-3 transition-all focus:outline-none focus:ring-2 focus:ring-brand/20 bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:border-brand';
 
   const renderInput = () => {
     switch (field.type as FormFieldType) {
@@ -618,17 +583,17 @@ function DynamicFieldInput({
           onChange(next);
         };
         return (
-          <div className={`space-y-2 p-3 rounded-xl border ${isDark ? 'bg-slate-900/50 border-slate-600' : 'bg-gray-50 border-gray-300'}`}>
+          <div className="space-y-2 p-3 rounded-xl border bg-slate-50 border-slate-200">
             {(field.options || []).map((opt) => (
               <label
                 key={opt}
-                className={`flex items-center gap-2 cursor-pointer py-1.5 ${isDark ? 'text-concrete-200 hover:text-white' : 'text-gray-700 hover:text-gray-900'}`}
+                className="flex items-center gap-2 cursor-pointer py-1.5 text-slate-700 hover:text-slate-800"
               >
                 <input
                   type="checkbox"
                   checked={selected.includes(opt)}
                   onChange={() => toggle(opt)}
-                  className="rounded border-slate-600 text-safety-orange focus:ring-safety-orange"
+                  className="rounded border-slate-300 text-brand focus:ring-brand"
                 />
                 {opt}
               </label>
@@ -654,9 +619,9 @@ function DynamicFieldInput({
               type="checkbox"
               checked={Boolean(value)}
               onChange={(e) => onChange(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-600 text-safety-orange focus:ring-safety-orange"
+              className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand"
             />
-            <span className={`text-sm ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+            <span className="text-sm text-slate-700">
               {field.placeholder || field.label}
             </span>
           </div>
@@ -677,12 +642,12 @@ function DynamicFieldInput({
 
   return (
     <div>
-      <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-concrete-300' : 'text-gray-700'}`}>
+      <label className="block text-sm font-medium mb-2 text-slate-700">
         {field.label} {field.required && '*'}
       </label>
       {renderInput()}
       {field.description && (
-        <p className={`mt-1 text-xs ${isDark ? 'text-concrete-500' : 'text-gray-500'}`}>{field.description}</p>
+        <p className="mt-1 text-xs text-slate-500">{field.description}</p>
       )}
     </div>
   );

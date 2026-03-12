@@ -119,6 +119,28 @@ export const useWeeklyPlan = () => {
     [getAllTasks]
   );
 
+  /** Get tasks whose targetDate falls within the given ISO week (e.g. "2026-W11") */
+  const getTasksByWeek = useCallback(
+    async (weekString: string): Promise<WeeklyTask[]> => {
+      const [yearStr, weekStr] = weekString.split('-W');
+      const year = Number(yearStr);
+      const week = Number(weekStr);
+      const jan4 = new Date(Date.UTC(year, 0, 4));
+      const dayOfWeek = jan4.getUTCDay() || 7;
+      const monday = new Date(jan4);
+      monday.setUTCDate(jan4.getUTCDate() - dayOfWeek + 1 + (week - 1) * 7);
+      const sunday = new Date(monday);
+      sunday.setUTCDate(monday.getUTCDate() + 6);
+
+      const monStr = monday.toISOString().slice(0, 10);
+      const sunStr = sunday.toISOString().slice(0, 10);
+
+      const all = await getAllTasks();
+      return all.filter(t => t.targetDate >= monStr && t.targetDate <= sunStr);
+    },
+    [getAllTasks]
+  );
+
   // ---------------------------------------------------------------------------
   // Build involvedUsers from author + assignedTo
   // ---------------------------------------------------------------------------
@@ -204,7 +226,7 @@ export const useWeeklyPlan = () => {
           filtered.involvedUsers = buildInvolvedUsers(authorId, updateData.assignedTo, allUsers);
         }
 
-        await updateDoc(taskRef, filtered);
+        await updateDoc(taskRef, filtered as { [key: string]: any });
       } catch (err) {
         console.error('Error updating task:', err);
         setError('Görev güncellenemedi.');
@@ -352,6 +374,7 @@ export const useWeeklyPlan = () => {
     loading,
     error,
     getTasksByMonth,
+    getTasksByWeek,
     getAllTasks,
     getNotes,
     createTask,

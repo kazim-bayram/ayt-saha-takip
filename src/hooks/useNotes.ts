@@ -231,7 +231,7 @@ export const useNotes = () => {
         sanitizedData.imageUrls = existingImageUrls;
       }
 
-      await updateDoc(noteRef, sanitizedData);
+      await updateDoc(noteRef, sanitizedData as { [key: string]: any });
     } catch (err) {
       console.error('Error updating note:', err);
       setError('Failed to update note. Please try again.');

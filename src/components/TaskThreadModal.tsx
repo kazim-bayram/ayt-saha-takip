@@ -16,7 +16,6 @@ import {
   Trash2,
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useWeeklyPlan, AddMessageInput } from '../hooks/useWeeklyPlan';
 import { WeeklyTask, TaskThreadMessage, TaskStatus } from '../types';
@@ -43,15 +42,15 @@ class TaskModalErrorBoundary extends Component<EBProps, EBState> {
     if (this.state.hasError) {
       return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl p-8 max-w-md mx-4 text-center space-y-4">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-2xl p-8 max-w-md mx-4 text-center space-y-4">
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Bir hata oluştu</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <h3 className="text-lg font-bold text-slate-800">Bir hata oluştu</h3>
+            <p className="text-sm text-slate-500">
               Görev detayları yüklenirken beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.
             </p>
             <button
               onClick={() => { this.setState({ hasError: false, error: null }); this.props.onReset?.(); }}
-              className="px-4 py-2 text-sm font-medium bg-safety-orange text-white rounded-lg hover:bg-safety-orange-dark transition-colors"
+              className="px-4 py-2 text-sm font-medium bg-brand hover:bg-brand-light text-white rounded-lg transition-colors"
             >
               Kapat
             </button>
@@ -93,9 +92,9 @@ function formatDate(ts: { toDate?: () => Date } | Date | number | null | undefin
 }
 
 const STATUS_BADGE: Record<TaskStatus, { bg: string; bgLight: string }> = {
-  'Bekliyor': { bg: 'bg-yellow-500/20 text-yellow-300', bgLight: 'bg-yellow-100 text-yellow-800' },
-  'Devam Ediyor': { bg: 'bg-blue-500/20 text-blue-300', bgLight: 'bg-blue-100 text-blue-800' },
-  'Tamamlandı': { bg: 'bg-green-500/20 text-green-300', bgLight: 'bg-green-100 text-green-800' }
+  'Bekliyor': { bg: 'bg-yellow-100 text-yellow-800', bgLight: 'bg-yellow-100 text-yellow-800' },
+  'Devam Ediyor': { bg: 'bg-blue-100 text-blue-800', bgLight: 'bg-blue-100 text-blue-800' },
+  'Tamamlandı': { bg: 'bg-green-100 text-green-800', bgLight: 'bg-green-100 text-green-800' },
 };
 
 // ---------------------------------------------------------------------------
@@ -104,13 +103,12 @@ const STATUS_BADGE: Record<TaskStatus, { bg: string; bgLight: string }> = {
 
 interface BubbleProps {
   msg: TaskThreadMessage;
-  isDark: boolean;
   isOwn: boolean;
   onReply: (msg: TaskThreadMessage) => void;
   onMarkRFIResponded?: (msgId: string) => void;
 }
 
-const MessageBubble: React.FC<BubbleProps> = ({ msg, isDark, isOwn, onReply, onMarkRFIResponded }) => {
+const MessageBubble: React.FC<BubbleProps> = ({ msg, isOwn, onReply, onMarkRFIResponded }) => {
   if (!msg) return null;
   const safeContent = typeof msg.content === 'string' ? msg.content : '';
   const safeName = typeof msg.authorName === 'string' ? msg.authorName : 'Bilinmeyen';
@@ -134,51 +132,45 @@ const MessageBubble: React.FC<BubbleProps> = ({ msg, isDark, isOwn, onReply, onM
           isRFI
             ? 'border-2 border-rfi-border bg-rfi-bg/30'
             : isOwn
-              ? isDark ? 'bg-safety-orange/20 rounded-br-sm' : 'bg-safety-orange/10 rounded-br-sm'
-              : isDark ? 'bg-slate-700 rounded-bl-sm' : 'bg-gray-100 rounded-bl-sm'
+              ? 'bg-brand/10 rounded-br-sm'
+              : 'bg-slate-100 rounded-bl-sm'
         }`}
       >
-        {/* RFI Badge */}
         {isRFI && (
           <div className="flex items-center gap-2 mb-1">
             <Shield className="w-3.5 h-3.5 text-rfi-text" />
             <span className="text-[10px] font-bold uppercase tracking-wider text-rfi-text">Resmi RFI</span>
             {rfiDeadline && (
-              <span className={`text-[10px] flex items-center gap-1 ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>
+              <span className="text-[10px] flex items-center gap-1 text-slate-500">
                 <Clock className="w-3 h-3" />
                 Son: {formatDate(rfiDeadline)}
               </span>
             )}
             {rfiResponded && (
-              <span className="text-[10px] text-green-400 flex items-center gap-1">
+              <span className="text-[10px] text-green-600 flex items-center gap-1">
                 <Check className="w-3 h-3" /> Yanıtlandı ({rfiResponseTime})
               </span>
             )}
           </div>
         )}
 
-        {/* Author + time */}
         <div className="flex items-center gap-2">
-          <User className={`w-3 h-3 ${isDark ? 'text-concrete-400' : 'text-gray-400'}`} />
-          <span className={`text-xs font-semibold ${isDark ? 'text-concrete-200' : 'text-gray-700'}`}>
-            {safeName}
-          </span>
-          <span className={`text-[10px] ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>
-            {formatTimestamp(msg.createdAt)}
-          </span>
+          <User className="w-3 h-3 text-slate-400" />
+          <span className="text-xs font-semibold text-slate-700">{safeName}</span>
+          <span className="text-[10px] text-slate-400">{formatTimestamp(msg.createdAt)}</span>
         </div>
 
         {typeof msg.replyToSnippet === 'string' && msg.replyToSnippet && (
-          <div className={`text-xs pl-3 border-l-2 italic line-clamp-2 ${isDark ? 'border-concrete-500 text-concrete-400' : 'border-gray-300 text-gray-500'}`}>
+          <div className="text-xs pl-3 border-l-2 italic line-clamp-2 border-slate-300 text-slate-500">
             {msg.replyToSnippet}
           </div>
         )}
 
         {safeContent && (
-          <p className={`text-sm whitespace-pre-wrap ${isDark ? 'text-white' : 'text-gray-900'}`}>{safeContent}</p>
+          <p className="text-sm whitespace-pre-wrap text-slate-800">{safeContent}</p>
         )}
 
-        {msg.imageUrls && msg.imageUrls.length > 0 && (
+        {Array.isArray(msg.imageUrls) && msg.imageUrls.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pt-1">
             {msg.imageUrls.map((url, i) => (
               <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block">
@@ -190,13 +182,13 @@ const MessageBubble: React.FC<BubbleProps> = ({ msg, isDark, isOwn, onReply, onM
 
         <div className="flex items-center gap-3">
           <button onClick={() => onReply(msg)}
-            className={`flex items-center gap-1 text-[10px] mt-1 transition-colors ${isDark ? 'text-concrete-500 hover:text-concrete-300' : 'text-gray-400 hover:text-gray-600'}`}
+            className="flex items-center gap-1 text-[10px] mt-1 transition-colors text-slate-400 hover:text-slate-600"
           >
             <CornerDownRight className="w-3 h-3" /> Yanıtla
           </button>
           {isRFI && !rfiResponded && onMarkRFIResponded && (
             <button onClick={() => onMarkRFIResponded(msg.id)}
-              className="flex items-center gap-1 text-[10px] mt-1 text-green-400 hover:text-green-300 transition-colors"
+              className="flex items-center gap-1 text-[10px] mt-1 text-green-600 hover:text-green-700 transition-colors"
             >
               <Check className="w-3 h-3" /> Yanıtlandı Olarak İşaretle
             </button>
@@ -211,13 +203,13 @@ const MessageBubble: React.FC<BubbleProps> = ({ msg, isDark, isOwn, onReply, onM
 // SystemLogEntry
 // ---------------------------------------------------------------------------
 
-const SystemLogEntry: React.FC<{ msg: TaskThreadMessage; isDark: boolean }> = ({ msg, isDark }) => {
+const SystemLogEntry: React.FC<{ msg: TaskThreadMessage }> = ({ msg }) => {
   if (!msg) return null;
   return (
     <div className="flex items-center gap-2 justify-center py-2">
-      <ArrowRight className={`w-3 h-3 ${isDark ? 'text-concrete-500' : 'text-gray-400'}`} />
-      <span className={`text-xs ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>{typeof msg.content === 'string' ? msg.content : ''}</span>
-      <span className={`text-[10px] ${isDark ? 'text-concrete-600' : 'text-gray-300'}`}>— {typeof msg.authorName === 'string' ? msg.authorName : ''}, {formatTimestamp(msg.createdAt)}</span>
+      <ArrowRight className="w-3 h-3 text-slate-400" />
+      <span className="text-xs text-slate-400">{typeof msg.content === 'string' ? msg.content : ''}</span>
+      <span className="text-[10px] text-slate-300">— {typeof msg.authorName === 'string' ? msg.authorName : ''}, {formatTimestamp(msg.createdAt)}</span>
     </div>
   );
 };
@@ -234,14 +226,14 @@ function generateThreadPDF(task: WeeklyTask | null, messages: TaskThreadMessage[
   let y = 20;
 
   doc.setFontSize(18);
-  doc.setTextColor(255, 107, 0);
+  doc.setTextColor(44, 62, 80);
   doc.text('AYT Muhendislik', 14, y);
   y += 6;
   doc.setFontSize(8);
   doc.setTextColor(120, 120, 120);
   doc.text('Proje Yonetim OS - Resmi Dokuman', 14, y);
   y += 2;
-  doc.setDrawColor(255, 107, 0);
+  doc.setDrawColor(44, 62, 80);
   doc.setLineWidth(0.5);
   doc.line(14, y, pageWidth - 14, y);
   y += 10;
@@ -318,7 +310,6 @@ interface TaskThreadModalProps {
 }
 
 const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose, onStatusChanged, onEditTask, onDeleteTask }) => {
-  const { isDark } = useTheme();
   const { currentUser, isAdmin } = useAuth();
   const { getTaskMessages, addTaskMessage, updateTaskStatus, markRFIResponded } = useWeeklyPlan();
 
@@ -403,23 +394,24 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
 
   if (!isOpen || !task) return null;
   const statusBadge = STATUS_BADGE[task.status] ?? STATUS_BADGE['Bekliyor'];
-  const rfiCount = (messages || []).filter(m => m.isRFI).length;
+  const safeMessages = Array.isArray(messages) ? messages : [];
+  const rfiCount = safeMessages.filter(m => m?.isRFI).length;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end animate-fade-in"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className={`relative w-full max-w-xl h-full flex flex-col shadow-2xl border-l animate-slide-left ${isDark ? 'bg-slate-900 border-slate-700/50' : 'bg-white border-gray-200'}`}>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => onClose?.()} />
+      <div className="relative w-full max-w-xl h-full flex flex-col shadow-2xl border-l animate-slide-left bg-white border-slate-200">
         {/* Header */}
-        <div className={`flex-shrink-0 px-5 py-4 border-b ${isDark ? 'border-slate-700/50' : 'border-gray-200'}`}>
+        <div className="flex-shrink-0 px-5 py-4 border-b border-slate-200">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <h2 className={`text-lg font-bold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{task?.title ?? 'Görev'}</h2>
+              <h2 className="text-lg font-bold truncate text-slate-800">{task?.title ?? 'Görev'}</h2>
               <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                <span className={`inline-flex text-xs font-medium px-2 py-0.5 rounded-full ${isDark ? statusBadge.bg : statusBadge.bgLight}`}>{task?.status ?? 'Bekliyor'}</span>
+                <span className={`inline-flex text-xs font-medium px-2 py-0.5 rounded-full ${statusBadge.bgLight}`}>{task?.status ?? 'Bekliyor'}</span>
                 {task?.assignedTo && (
-                  <span className={`flex items-center gap-1 text-xs ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}><User className="w-3 h-3" />{task.assignedTo}</span>
+                  <span className="flex items-center gap-1 text-xs text-slate-500"><User className="w-3 h-3" />{task.assignedTo}</span>
                 )}
                 {task?.projectId && (
                   <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${task?.color ?? ''}`}>{task.projectId}</span>
@@ -431,56 +423,56 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
                 )}
               </div>
               {task?.description && (
-                <p className={`text-xs mt-2 line-clamp-2 ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>{task.description}</p>
+                <p className="text-xs mt-2 line-clamp-2 text-slate-500">{task.description}</p>
               )}
               <div className="flex gap-1.5 mt-3 flex-wrap items-center">
-                <label className={`text-xs font-medium ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>Durum:</label>
+                <label className="text-xs font-medium text-slate-700">Durum:</label>
                 <select
                   value={task?.status ?? 'Bekliyor'}
                   onChange={(e) => handleStatusChange(e.target.value as TaskStatus)}
                   disabled={statusUpdating}
-                  className={`text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors focus:outline-none focus:ring-1 focus:ring-safety-orange/50 ${
+                  className={`text-[11px] font-medium px-2.5 py-1 rounded-md border transition-colors focus:outline-none focus:ring-1 focus:ring-brand/20 bg-slate-100 border-slate-200 text-slate-700 ${
                     statusUpdating ? 'opacity-60 cursor-not-allowed' : ''
-                  } ${isDark ? 'bg-slate-800 border-slate-600 text-concrete-300' : 'bg-gray-100 border-gray-300 text-gray-700'}`}
+                  }`}
                 >
                   <option value="Bekliyor">Bekliyor</option>
                   <option value="Devam Ediyor">Devam Ediyor</option>
                   <option value="Tamamlandı">Tamamlandı</option>
                 </select>
                 {statusUpdating && (
-                  <Loader2 className={`w-3.5 h-3.5 animate-spin ${isDark ? 'text-concrete-400' : 'text-gray-500'}`} />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-500" />
                 )}
                 <span className="flex-1" />
-                {onEditTask && (
+                {typeof onEditTask === 'function' && (
                   <button
                     onClick={() => onEditTask(task)}
-                    className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors ${isDark ? 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+                    className="flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors bg-blue-100 text-blue-700 hover:bg-blue-200"
                   >
                     <Edit3 className="w-3 h-3" /> Düzenle
                   </button>
                 )}
-                {onDeleteTask && isAdmin() && (
+                {typeof onDeleteTask === 'function' && isAdmin && (
                   <button
                     onClick={() => {
                       if (window.confirm('Bu görevi silmek istediğinizden emin misiniz?')) {
                         onDeleteTask(task.id);
                       }
                     }}
-                    className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors ${isDark ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
+                    className="flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors bg-red-100 text-red-700 hover:bg-red-200"
                   >
                     <Trash2 className="w-3 h-3" /> Sil
                   </button>
                 )}
                 <button
                   onClick={() => { try { generateThreadPDF(task, messages || []); } catch { /* safe */ } }}
-                  className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors ${isDark ? 'bg-slate-800 text-concrete-300 hover:bg-slate-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                  className="flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200"
                 >
                   <FileDown className="w-3 h-3" /> PDF Rapor
                 </button>
               </div>
             </div>
-            <button onClick={onClose}
-              className={`p-2 rounded-lg flex-shrink-0 transition-colors ${isDark ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+            <button onClick={() => onClose?.()}
+              className="p-2 rounded-lg flex-shrink-0 transition-colors text-slate-400 hover:text-slate-600 hover:bg-slate-100"
             ><X className="w-5 h-5" /></button>
           </div>
         </div>
@@ -489,20 +481,20 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
           {loadingMsgs ? (
             <div className="flex items-center justify-center py-16 gap-2">
-              <Loader2 className={`w-5 h-5 animate-spin ${isDark ? 'text-concrete-400' : 'text-gray-400'}`} />
-              <span className={`text-sm ${isDark ? 'text-concrete-400' : 'text-gray-500'}`}>Mesajlar yükleniyor…</span>
+              <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+              <span className="text-sm text-slate-400">Mesajlar yükleniyor…</span>
             </div>
-          ) : (messages || []).length === 0 ? (
-            <p className={`text-center text-sm py-16 ${isDark ? 'text-concrete-500' : 'text-gray-400'}`}>
+          ) : safeMessages.length === 0 ? (
+            <p className="text-center text-sm py-16 text-slate-400">
               Henüz mesaj veya aktivite yok. İlk mesajı siz gönderin.
             </p>
           ) : (
-            (messages || []).map(msg =>
-              msg.messageType === 'system_log' ? (
-                <SystemLogEntry key={msg.id} msg={msg} isDark={isDark} />
+            safeMessages.map(msg =>
+              msg?.messageType === 'system_log' ? (
+                <SystemLogEntry key={msg.id} msg={msg} />
               ) : (
                 <MessageBubble
-                  key={msg.id} msg={msg} isDark={isDark}
+                  key={msg.id} msg={msg}
                   isOwn={msg.authorId === currentUser?.uid}
                   onReply={setReplyTo}
                   onMarkRFIResponded={handleMarkRFIResponded}
@@ -514,13 +506,13 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
         </div>
 
         {/* Input Area */}
-        <div className={`flex-shrink-0 border-t px-5 py-3 space-y-2 ${isDark ? 'border-slate-700/50' : 'border-gray-200'}`}>
+        <div className="flex-shrink-0 border-t px-5 py-3 space-y-2 border-slate-200">
           {sendError && (
             <div className="flex items-center gap-2 text-xs text-red-400"><AlertCircle className="w-3.5 h-3.5" />{sendError}</div>
           )}
 
           {replyTo && (
-            <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${isDark ? 'bg-slate-800 text-concrete-300' : 'bg-gray-100 text-gray-600'}`}>
+            <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-slate-100 text-slate-600">
               <CornerDownRight className="w-3.5 h-3.5 flex-shrink-0" />
               <span className="truncate flex-1"><strong>{replyTo?.authorName ?? ''}:</strong> {(replyTo?.content ?? '').slice(0, 80)}{(replyTo?.content?.length ?? 0) > 80 ? '…' : ''}</span>
               <button onClick={() => setReplyTo(null)} className="flex-shrink-0 hover:text-red-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
@@ -534,7 +526,7 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
               className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-colors ${
                 isRFIMode
                   ? 'bg-rfi-border/20 text-rfi-text border border-rfi-border'
-                  : isDark ? 'text-concrete-400 hover:text-concrete-200 hover:bg-slate-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
               }`}
             >
               <Shield className="w-3.5 h-3.5" />
@@ -546,12 +538,12 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
                 value={rfiDeadline}
                 onChange={(e) => setRfiDeadline(e.target.value)}
                 placeholder="Son tarih"
-                className={`text-xs px-2 py-1.5 rounded-lg border ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
+                className="text-xs px-2 py-1.5 rounded-lg border bg-white border-slate-200 text-slate-800 focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
               />
             )}
           </div>
 
-          {pendingFiles.length > 0 && (
+          {Array.isArray(pendingFiles) && pendingFiles.length > 0 && (
             <div className="flex gap-2 flex-wrap">
               {pendingFiles.map((f, i) => (
                 <div key={i} className="relative group">
@@ -566,7 +558,7 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
 
           <div className="flex items-end gap-2">
             <button onClick={() => fileInputRef.current?.click()} disabled={sending}
-              className={`p-2.5 rounded-lg transition-colors flex-shrink-0 ${isDark ? 'text-concrete-400 hover:text-white hover:bg-slate-700/50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+              className="p-2.5 rounded-lg transition-colors flex-shrink-0 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
               title="Dosya Ekle"
             ><Paperclip className="w-5 h-5" /></button>
             <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden"
@@ -574,16 +566,13 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
             />
             <textarea value={msgText} onChange={(e) => setMsgText(e.target.value)} onKeyDown={handleKeyDown}
               placeholder="Mesajınızı yazın… (Shift+Enter yeni satır)" disabled={sending} rows={1}
-              className={`flex-1 resize-none rounded-xl px-4 py-2.5 text-sm leading-relaxed transition-all focus:outline-none focus:ring-2 focus:ring-safety-orange/20 ${
-                isDark ? 'bg-slate-800 border border-slate-600 text-white placeholder-concrete-500 focus:border-safety-orange'
-                  : 'bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-400 focus:border-safety-orange'
-              }`}
+              className="flex-1 resize-none rounded-xl px-4 py-2.5 text-sm leading-relaxed transition-all focus:outline-none bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:border-brand focus:ring-2 focus:ring-brand/20"
               style={{ maxHeight: 120 }}
               onInput={(e) => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }}
             />
             <button onClick={handleSend}
               disabled={sending || (!msgText.trim() && pendingFiles.length === 0)}
-              className="p-2.5 rounded-lg bg-safety-orange hover:bg-safety-orange-dark text-white transition-colors disabled:opacity-40 flex-shrink-0"
+              className="p-2.5 rounded-lg bg-brand hover:bg-brand-light text-white transition-colors disabled:opacity-40 flex-shrink-0"
               title="Gönder"
             >{sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}</button>
           </div>
@@ -593,7 +582,6 @@ const TaskThreadModal: React.FC<TaskThreadModalProps> = ({ task, isOpen, onClose
   );
 };
 
-// Wrap in Error Boundary so a render crash shows a fallback instead of a white screen
 const TaskThreadModalSafe: React.FC<TaskThreadModalProps> = (props) => (
   <TaskModalErrorBoundary onReset={props.onClose}>
     <TaskThreadModal {...props} />
