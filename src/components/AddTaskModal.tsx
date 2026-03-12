@@ -59,7 +59,10 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [projectId, setProjectId] = useState('');
+  // Human-readable assignee name for UI (`assignedTo`)
   const [assignedTo, setAssignedTo] = useState('');
+  // Firebase UID of assignee for RBAC (`assignedToId`)
+  const [assignedToId, setAssignedToId] = useState('');
   const [color, setColor] = useState<TaskCategoryColor>('bg-blue-100 text-blue-800');
   const [priority, setPriority] = useState<TaskPriority>('Normal');
   const [status, setStatus] = useState<TaskStatus>('Bekliyor');
@@ -90,6 +93,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
       setDescription(taskToEdit.description || '');
       setProjectId(taskToEdit.projectId || '');
       setAssignedTo(taskToEdit.assignedTo || '');
+      setAssignedToId(taskToEdit.assignedToId || '');
       setColor(taskToEdit.color || 'bg-blue-100 text-blue-800');
       setPriority(taskToEdit.priority || 'Normal');
       setStatus(taskToEdit.status || 'Bekliyor');
@@ -130,6 +134,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     setDescription('');
     setProjectId('');
     setAssignedTo('');
+    setAssignedToId('');
     setColor('bg-blue-100 text-blue-800');
     setPriority('Normal');
     setStatus('Bekliyor');
@@ -166,6 +171,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           description: description.trim(),
           projectId: projectId.trim(),
           assignedTo: assignedTo.trim(),
+          assignedToId: assignedToId || undefined,
           color,
           targetDate,
           status,
@@ -183,6 +189,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           description: description.trim(),
           projectId: projectId.trim(),
           assignedTo: assignedTo.trim(),
+          assignedToId: assignedToId || undefined,
           color,
           targetDate,
           status: 'Bekliyor',
@@ -304,14 +311,20 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
               </label>
               {users.length > 0 ? (
                 <select
-                  value={assignedTo}
-                  onChange={(e) => setAssignedTo(e.target.value)}
+                  value={assignedToId}
+                  onChange={(e) => {
+                    const uid = e.target.value;
+                    setAssignedToId(uid);
+                    const user = users.find((u) => u.uid === uid);
+                    const name = user?.displayName || user?.username || '';
+                    setAssignedTo(name);
+                  }}
                   className={inputClass}
                   disabled={saving}
                 >
                   <option value="">Seçiniz</option>
                   {users.map((u) => (
-                    <option key={u.uid} value={u.displayName || u.username}>
+                    <option key={u.uid} value={u.uid}>
                       {u.displayName || u.username}
                     </option>
                   ))}

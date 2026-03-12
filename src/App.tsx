@@ -13,12 +13,6 @@ import ProfileSettings from './components/ProfileSettings';
 import UserManagement from './components/UserManagement';
 import { CheckCircle2 } from 'lucide-react';
 
-const AdminTableRoute: React.FC = () => {
-  const { userProfile } = useAuth();
-  if (userProfile?.role !== 'admin') return <Navigate to="/" replace />;
-  return <TablePage />;
-};
-
 const AdminFormBuilderRoute: React.FC = () => {
   const { userProfile } = useAuth();
   if (userProfile?.role !== 'admin') return <Navigate to="/" replace />;
@@ -64,7 +58,8 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/" element={<ProjectConsole />} />
           <Route path="/saha-notlari" element={<Dashboard />} />
-          <Route path="/table-view" element={<AdminTableRoute />} />
+          {/* Table view is available to all authenticated users; RBAC is enforced in hooks */}
+          <Route path="/table-view" element={<TablePage />} />
           <Route path="/form-builder" element={<AdminFormBuilderRoute />} />
           <Route path="/weekly-plan" element={<Navigate to="/" replace />} />
         </Routes>

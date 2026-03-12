@@ -23,7 +23,8 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { to: '/', icon: LayoutDashboard, label: 'Proje Konsol' },
   { to: '/saha-notlari', icon: ClipboardList, label: 'Saha Notları' },
-  { to: '/table-view', icon: Table2, label: 'Tablo Görünümü', adminOnly: true },
+  // Table view should be visible to all authenticated users; RBAC is enforced in hooks
+  { to: '/table-view', icon: Table2, label: 'Tablo Görünümü' },
   { to: '/form-builder', icon: Settings2, label: 'Form Oluşturucu', adminOnly: true },
 ];
 

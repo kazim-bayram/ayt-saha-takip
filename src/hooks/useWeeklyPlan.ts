@@ -85,20 +85,19 @@ export const useWeeklyPlan = () => {
       }));
 
       // Strict client-side RBAC filter
-      let tasks = allTasks;
+      let filteredTasks = allTasks;
       if (userProfile.role === 'worker') {
-        tasks = allTasks.filter((task) => {
-          const uid = currentUser.uid;
-          return (
-            task.authorId === uid ||
-            task.assignedToId === uid ||
-            (Array.isArray(task.involvedUsers) && task.involvedUsers.includes(uid))
-          );
-        });
+        const uid = currentUser.uid;
+        filteredTasks = allTasks.filter(
+          (task) => task.assignedToId === uid || task.authorId === uid
+        );
       }
 
+      // Temporary debug log for RBAC verification
+      console.log('Worker UID:', currentUser.uid, 'Filtered Tasks:', filteredTasks, 'Raw Tasks:', allTasks);
+
       setLoading(false);
-      return tasks;
+      return filteredTasks;
     } catch (err) {
       console.error('Error fetching all tasks:', err);
       setError('Görevler yüklenirken bir hata oluştu.');
