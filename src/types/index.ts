@@ -117,6 +117,8 @@ export interface Note {
   userId: string;
   userEmail: string;
   userName: string;
+  /** Optional UID of the worker this note is assigned to (for RBAC filtering) */
+  assignedToId?: string;
   userRole?: UserRole;  // Track if admin or worker created the note
   // Multi-image support (new)
   imageUrls: string[];
@@ -281,7 +283,10 @@ export interface WeeklyTask {
   /** Target completion date (YYYY-MM-DD) */
   targetDate: string;
   color: TaskCategoryColor;
+  /** Human-friendly assignee name for UI display */
   assignedTo: string;
+  /** UID of the assigned user for strict RBAC filtering */
+  assignedToId?: string;
   /** UID of the user who created this task */
   authorId?: string;
   /** UIDs involved (author + assignee) for Firestore RBAC array-contains queries */

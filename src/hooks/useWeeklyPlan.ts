@@ -20,7 +20,10 @@ import { db, storage } from '../firebase/config';
 import { WeeklyTask, TaskStatus, TaskThreadMessage, Note } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
-export type CreateTaskInput = Omit<WeeklyTask, 'id' | 'createdAt' | 'updatedAt' | 'authorId' | 'involvedUsers' | 'lastEditedBy'>;
+export type CreateTaskInput = Omit<
+  WeeklyTask,
+  'id' | 'createdAt' | 'updatedAt' | 'authorId' | 'involvedUsers' | 'lastEditedBy'
+>;
 
 export interface AddMessageInput {
   content: string;
@@ -76,10 +79,24 @@ export const useWeeklyPlan = () => {
         );
       }
       const snapshot = await getDocs(q);
-      const tasks = snapshot.docs.map((d) => ({
+      const allTasks: WeeklyTask[] = snapshot.docs.map((d) => ({
         id: d.id,
         ...(d.data() as Omit<WeeklyTask, 'id'>)
       }));
+
+      // Strict client-side RBAC filter
+      let tasks = allTasks;
+      if (userProfile.role === 'worker') {
+        tasks = allTasks.filter((task) => {
+          const uid = currentUser.uid;
+          return (
+            task.authorId === uid ||
+            task.assignedToId === uid ||
+            (Array.isArray(task.involvedUsers) && task.involvedUsers.includes(uid))
+          );
+        });
+      }
+
       setLoading(false);
       return tasks;
     } catch (err) {
@@ -90,21 +107,33 @@ export const useWeeklyPlan = () => {
     }
   }, [currentUser, userProfile, isAdmin]);
 
-  /** Fetch notes for cross-data integration */
+  /** Fetch notes for cross-data integration (RBAC-filtered) */
   const getNotes = useCallback(async (): Promise<Note[]> => {
+    if (!currentUser || !userProfile) return [];
     try {
       const notesRef = collection(db, 'notes');
       const q = query(notesRef, orderBy('createdAt', 'asc'));
       const snapshot = await getDocs(q);
-      return snapshot.docs.map((d) => ({
+      const allNotes: Note[] = snapshot.docs.map((d) => ({
         id: d.id,
         ...(d.data() as Omit<Note, 'id'>)
       }));
+
+      if (userProfile.role === 'admin') {
+        return allNotes;
+      }
+
+      const uid = currentUser.uid;
+      return allNotes.filter(
+        (note) =>
+          note.userId === uid ||
+          (note as any).assignedToId === uid
+      );
     } catch (err) {
       console.error('Error fetching notes for timeline:', err);
       return [];
     }
-  }, []);
+  }, [currentUser, userProfile]);
 
   /** Get tasks for a month range (for monthly calendar) */
   const getTasksByMonth = useCallback(
@@ -142,17 +171,14 @@ export const useWeeklyPlan = () => {
   );
 
   // ---------------------------------------------------------------------------
-  // Build involvedUsers from author + assignedTo
+  // Build involvedUsers from author + assignee UID
   // ---------------------------------------------------------------------------
 
-  function buildInvolvedUsers(authorUid: string, assignedTo: string, allUsers?: { uid: string; displayName: string; username: string }[]): string[] {
+  function buildInvolvedUsers(authorUid: string, assignedToId?: string | null): string[] {
     const set = new Set<string>();
     set.add(authorUid);
-    if (assignedTo && allUsers) {
-      const matched = allUsers.find(
-        (u) => u.displayName === assignedTo || u.username === assignedTo
-      );
-      if (matched) set.add(matched.uid);
+    if (assignedToId) {
+      set.add(assignedToId);
     }
     return Array.from(set);
   }
@@ -162,13 +188,16 @@ export const useWeeklyPlan = () => {
   // ---------------------------------------------------------------------------
 
   const createTask = useCallback(
-    async (data: CreateTaskInput, allUsers?: { uid: string; displayName: string; username: string }[]): Promise<string> => {
+    async (
+      data: CreateTaskInput,
+      _allUsers?: { uid: string; displayName: string; username: string }[]
+    ): Promise<string> => {
       if (!currentUser || !userProfile) {
         throw new Error('User not authenticated');
       }
       setError(null);
       const now = Timestamp.now();
-      const involved = buildInvolvedUsers(currentUser.uid, data.assignedTo, allUsers);
+      const involved = buildInvolvedUsers(currentUser.uid, data.assignedToId);
 
       const payload: Omit<WeeklyTask, 'id'> = {
         projectId: data.projectId,
@@ -178,6 +207,7 @@ export const useWeeklyPlan = () => {
         targetDate: data.targetDate,
         color: data.color,
         assignedTo: data.assignedTo,
+        ...(data.assignedToId ? { assignedToId: data.assignedToId } : {}),
         authorId: currentUser.uid,
         involvedUsers: involved,
         createdAt: now,
@@ -207,7 +237,7 @@ export const useWeeklyPlan = () => {
     async (
       taskId: string,
       updateData: Partial<Omit<WeeklyTask, 'id' | 'createdAt'>>,
-      allUsers?: { uid: string; displayName: string; username: string }[]
+      _allUsers?: { uid: string; displayName: string; username: string }[]
     ): Promise<void> => {
       if (!currentUser || !userProfile) {
         throw new Error('User not authenticated');
@@ -222,9 +252,10 @@ export const useWeeklyPlan = () => {
         filtered.updatedAt = Timestamp.now();
         filtered.lastEditedBy = currentUser.uid;
 
-        if (updateData.assignedTo !== undefined && allUsers) {
+        if (updateData.assignedTo !== undefined || updateData.assignedToId !== undefined) {
           const authorId = (updateData as any).authorId || currentUser.uid;
-          filtered.involvedUsers = buildInvolvedUsers(authorId, updateData.assignedTo, allUsers);
+          const assigneeUid = (updateData as any).assignedToId;
+          filtered.involvedUsers = buildInvolvedUsers(authorId, assigneeUid);
         }
 
         await updateDoc(taskRef, filtered as { [key: string]: any });
