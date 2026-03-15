@@ -5,7 +5,6 @@ import {
   deleteDoc,
   doc,
   getDocs,
-  orderBy,
   query,
   Timestamp,
   updateDoc,
@@ -70,12 +69,11 @@ export const useWeeklyPlan = () => {
       const tasksRef = collection(db, 'weekly_tasks');
       let q;
       if (isAdmin) {
-        q = query(tasksRef, orderBy('createdAt', 'asc'));
+        q = query(tasksRef);
       } else {
         q = query(
           tasksRef,
-          where('involvedUsers', 'array-contains', currentUser.uid),
-          orderBy('createdAt', 'asc')
+          where('involvedUsers', 'array-contains', currentUser.uid)
         );
       }
       const snapshot = await getDocs(q);
@@ -84,13 +82,28 @@ export const useWeeklyPlan = () => {
         ...(d.data() as Omit<WeeklyTask, 'id'>)
       }));
 
+      // Client-side sort by createdAt desc, with safe fallbacks
+      const sortedTasks = [...allTasks].sort((a, b) => {
+        const aTs = (a.createdAt as any)?.toMillis
+          ? (a.createdAt as any).toMillis()
+          : a.createdAt
+          ? new Date(a.createdAt as any).getTime()
+          : 0;
+        const bTs = (b.createdAt as any)?.toMillis
+          ? (b.createdAt as any).toMillis()
+          : b.createdAt
+          ? new Date(b.createdAt as any).getTime()
+          : 0;
+        return bTs - aTs;
+      });
+
       // Strict client-side RBAC filter with aggressive debug logging for workers
-      let filteredTasks = allTasks;
+      let filteredTasks = sortedTasks;
       if (userProfile?.role === 'worker') {
         const myUid = currentUser.uid;
         const myName = currentUser.displayName || '';
 
-        const filtered = allTasks.filter((task) => {
+        const filtered = sortedTasks.filter((task) => {
           const matchesId = (task as any).assignedToId === myUid;
           const matchesName = (task as any).assignedTo === myName;
           const isAuthor = (task as any).authorId === myUid;
@@ -122,19 +135,33 @@ export const useWeeklyPlan = () => {
     if (!currentUser || !userProfile) return [];
     try {
       const notesRef = collection(db, 'notes');
-      const q = query(notesRef, orderBy('createdAt', 'asc'));
+      const q = query(notesRef);
       const snapshot = await getDocs(q);
       const allNotes: Note[] = snapshot.docs.map((d) => ({
         id: d.id,
         ...(d.data() as Omit<Note, 'id'>)
       }));
 
+      const sortedNotes = [...allNotes].sort((a, b) => {
+        const aTs = (a.createdAt as any)?.toMillis
+          ? (a.createdAt as any).toMillis()
+          : a.createdAt
+          ? new Date(a.createdAt as any).getTime()
+          : 0;
+        const bTs = (b.createdAt as any)?.toMillis
+          ? (b.createdAt as any).toMillis()
+          : b.createdAt
+          ? new Date(b.createdAt as any).getTime()
+          : 0;
+        return bTs - aTs;
+      });
+
       if (userProfile.role === 'admin') {
-        return allNotes;
+        return sortedNotes;
       }
 
       const uid = currentUser.uid;
-      return allNotes.filter(
+      return sortedNotes.filter(
         (note) =>
           note.userId === uid ||
           (note as any).assignedToId === uid

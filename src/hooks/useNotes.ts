@@ -3,7 +3,6 @@ import {
   collection,
   query,
   where,
-  orderBy,
   onSnapshot,
   addDoc,
   updateDoc,
@@ -43,19 +42,18 @@ export const useNotes = () => {
 
     setLoading(true);
 
-    // Build query based on role
+    // Build query based on role (no Firestore orderBy; sorting is client-side)
     const notesRef = collection(db, 'notes');
     let q;
 
     if (isAdmin) {
       // Admin can see all notes
-      q = query(notesRef, orderBy('createdAt', 'asc'));
+      q = query(notesRef);
     } else {
       // Workers can only see their own notes
       q = query(
         notesRef,
-        where('userId', '==', currentUser.uid),
-        orderBy('createdAt', 'asc')
+        where('userId', '==', currentUser.uid)
       );
     }
 
@@ -70,7 +68,22 @@ export const useNotes = () => {
             ...doc.data()
           } as Note);
         });
-        setNotes(notesData);
+
+        const sortedNotes = notesData.sort((a, b) => {
+          const aTs = (a.createdAt as any)?.toMillis
+            ? (a.createdAt as any).toMillis()
+            : a.createdAt
+            ? new Date(a.createdAt as any).getTime()
+            : 0;
+          const bTs = (b.createdAt as any)?.toMillis
+            ? (b.createdAt as any).toMillis()
+            : b.createdAt
+            ? new Date(b.createdAt as any).getTime()
+            : 0;
+          return bTs - aTs;
+        });
+
+        setNotes(sortedNotes);
         setLoading(false);
         setError(null);
       },
