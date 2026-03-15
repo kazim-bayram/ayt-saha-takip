@@ -234,11 +234,11 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center animate-fade-in"
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 animate-fade-in"
       onClick={handleBackdropClick}
     >
       <div
-        className="rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-hidden shadow-2xl border animate-slide-up bg-white border-slate-200"
+        className="w-full h-full md:h-auto md:w-11/12 md:max-w-4xl bg-white md:rounded-xl flex flex-col shadow-2xl border animate-slide-up border-slate-200 max-h-screen md:max-h-[90vh]"
       >
         <div
           className="flex items-center justify-between p-4 border-b border-slate-200"
@@ -255,7 +255,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(90vh-140px)]">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
           <div className="p-4 space-y-5">
             {error && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">

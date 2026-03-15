@@ -207,10 +207,10 @@ const UserManagement: React.FC<UserManagementProps> = ({ isOpen, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 animate-fade-in"
       onClick={handleBackdropClick}
     >
-      <div className="rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl border animate-slide-up bg-white border-slate-200">
+      <div className="w-full h-full md:h-auto md:w-11/12 md:max-w-4xl bg-white md:rounded-xl flex flex-col max-h-screen md:max-h-[90vh] overflow-hidden shadow-2xl border animate-slide-up border-slate-200">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-200">
           <div className="flex items-center gap-3">
@@ -276,7 +276,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Users Table */}
-        <div className="overflow-y-auto max-h-[calc(90vh-200px)]">
+        <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 text-brand animate-spin" />

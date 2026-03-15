@@ -164,10 +164,10 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 animate-fade-in"
       onClick={handleBackdropClick}
     >
-      <div className="rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl border animate-slide-up bg-white border-slate-200">
+      <div className="w-full h-full md:h-auto md:w-11/12 md:max-w-4xl bg-white md:rounded-xl flex flex-col max-h-screen md:max-h-[90vh] overflow-hidden shadow-2xl border animate-slide-up border-slate-200">
         {/* Başlık */}
         <div className="flex items-center justify-between p-4 border-b border-slate-200">
           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -219,7 +219,7 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
         </div>
 
         {/* İçerik */}
-        <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
+        <div className="flex-1 overflow-y-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
             {/* Resim Bölümü */}
             <div className="space-y-4">

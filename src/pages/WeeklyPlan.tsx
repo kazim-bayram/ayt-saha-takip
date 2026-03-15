@@ -132,7 +132,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onStatusChange, onDragStart, 
       draggable
       onDragStart={(e) => onDragStart(e, task)}
       onClick={() => onOpenThread(task)}
-      className={`group relative border-l-4 ${colorToBorder(task.color)} rounded-lg p-3 cursor-grab active:cursor-grabbing transition-shadow hover:shadow-md bg-white hover:bg-slate-50 shadow-sm`}
+      className={`group relative border-l-4 ${colorToBorder(task.color)} rounded-lg p-4 cursor-grab active:cursor-grabbing transition-shadow hover:shadow-md bg-white hover:bg-slate-50 shadow-sm`}
     >
       <GripVertical className="absolute top-2 right-2 w-4 h-4 opacity-0 group-hover:opacity-60 transition-opacity text-slate-400" />
 
@@ -374,7 +374,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
         </span>
       </div>
 
-      <div className="flex-1 p-3 space-y-2.5 overflow-y-auto">
+      <div className="flex-1 p-3 space-y-3 overflow-y-auto">
         {tasks.length === 0 ? (
           <p className="text-xs text-center py-8 text-slate-400">
             {meta.emptyText}
@@ -571,7 +571,7 @@ const WeeklyPlan: React.FC = () => {
             <span className="text-sm text-slate-500">Görevler yükleniyor…</span>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex flex-col md:grid md:grid-cols-3 gap-4 md:gap-6">
             {STATUSES.map((status) => (
               <div
                 key={status}

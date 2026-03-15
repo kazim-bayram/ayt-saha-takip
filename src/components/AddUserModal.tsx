@@ -148,10 +148,10 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserCrea
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 animate-fade-in"
       onClick={handleBackdropClick}
     >
-      <div className="rounded-2xl max-w-md w-full shadow-2xl border animate-slide-up bg-white border-slate-200">
+      <div className="w-full h-full md:h-auto md:w-11/12 md:max-w-md bg-white md:rounded-xl flex flex-col shadow-2xl border animate-slide-up border-slate-200 max-h-screen md:max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-200">
           <h2 className="text-xl font-semibold text-slate-800">

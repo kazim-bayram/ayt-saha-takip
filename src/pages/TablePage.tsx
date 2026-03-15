@@ -321,25 +321,25 @@ const TablePage: React.FC = () => {
         onClick={() => handleRowClick(row)}
         className={`border-b border-slate-100 cursor-pointer transition-colors hover:bg-blue-50/50 ${stripe}`}
       >
-        <td className="py-2.5 px-3 text-slate-400 text-xs font-mono border-r border-slate-100 text-center">{globalIdx + 1}</td>
-        <td className="py-2.5 px-3 border-r border-slate-100">
+        <td className="py-2.5 px-3 text-slate-400 text-xs font-mono border-r border-slate-100 text-center whitespace-nowrap">{globalIdx + 1}</td>
+        <td className="py-2.5 px-3 border-r border-slate-100 whitespace-nowrap">
           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
             row.type === 'note' ? 'bg-violet-50 text-violet-700 border border-violet-200' : 'bg-sky-50 text-sky-700 border border-sky-200'
           }`}>
             {row.type === 'note' ? 'Kayıt' : 'Plan'}
           </span>
         </td>
-        <td className="py-2.5 px-3 border-r border-slate-100 font-medium text-slate-800 max-w-[220px] truncate">{row.projectName || '–'}</td>
-        <td className="py-2.5 px-3 border-r border-slate-100 text-slate-500 font-mono text-xs">{row.adaParsel || '–'}</td>
-        <td className="py-2.5 px-3 border-r border-slate-100 text-slate-700 text-xs">{row.kategori || '–'}</td>
-        <td className="py-2.5 px-3 border-r border-slate-100 text-slate-700 max-w-[280px] truncate">{row.konu || '–'}</td>
-        <td className="py-2.5 px-3 border-r border-slate-100">
+        <td className="py-2.5 px-3 border-r border-slate-100 font-medium text-slate-800 max-w-[220px] truncate whitespace-nowrap">{row.projectName || '–'}</td>
+        <td className="py-2.5 px-3 border-r border-slate-100 text-slate-500 font-mono text-xs whitespace-nowrap">{row.adaParsel || '–'}</td>
+        <td className="py-2.5 px-3 border-r border-slate-100 text-slate-700 text-xs whitespace-nowrap">{row.kategori || '–'}</td>
+        <td className="py-2.5 px-3 border-r border-slate-100 text-slate-700 max-w-[280px] truncate whitespace-nowrap">{row.konu || '–'}</td>
+        <td className="py-2.5 px-3 border-r border-slate-100 whitespace-nowrap">
           <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap ${pillClass}`}>
             {row.statusLabel}
           </span>
         </td>
         <td className="py-2.5 px-3 border-r border-slate-100 text-slate-500 font-mono text-xs whitespace-nowrap">{row.tarihDisplay}</td>
-        <td className="py-2.5 px-3" onClick={e => e.stopPropagation()}>
+        <td className="py-2.5 px-3 whitespace-nowrap" onClick={e => e.stopPropagation()}>
           <div className="flex items-center gap-0.5">
             {row.note && canEditNote(row.note) && (
               <button onClick={() => handleEditNote(row.note!)}
@@ -422,7 +422,7 @@ const TablePage: React.FC = () => {
 
         {/* ---- Excel-style Table ---- */}
         <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="w-full overflow-x-auto">
             <table className="w-full min-w-[1000px] text-sm border-collapse">
               <thead className="sticky top-0 z-10">
                 {/* Column headers */}

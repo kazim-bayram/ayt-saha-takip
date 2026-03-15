@@ -236,7 +236,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget && !saving) {
           resetForm();
@@ -245,12 +245,11 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
       }}
     >
       <div
-        className="rounded-2xl w-full max-w-2xl shadow-2xl border max-h-[92vh] overflow-y-auto bg-white border-slate-200"
+        className="w-full h-full md:h-auto md:w-11/12 md:max-w-4xl bg-white md:rounded-xl flex flex-col shadow-2xl border border-slate-200 max-h-screen md:max-h-[92vh]"
       >
         {/* Header */}
         <div
-          className="flex items-center justify-between px-6 py-4 border-b border-slate-200"
-        >
+          className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-slate-200"
           <div>
             <h2 className="text-lg font-bold flex items-center gap-2 text-slate-800">
               {isEditMode ? <><Edit3 className="w-5 h-5" /> Görevi Düzenle</> : 'Yeni Görev Oluştur'}
@@ -269,7 +268,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-4 md:px-6 py-5 space-y-5">
           {error && (
             <div className="p-3 rounded-lg flex items-center gap-3 bg-red-50 border border-red-200">
               <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
@@ -302,7 +301,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           </div>
 
           {/* Row 2 — Target Date + Assigned To */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>
                 <CalendarDays className="w-3.5 h-3.5" />
@@ -356,7 +355,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           </div>
 
           {/* Row 3 — Ada/Parsel + Kategori */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>
                 <MapPin className="w-3.5 h-3.5" />
@@ -391,7 +390,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           </div>
 
           {/* Row 4 — Alt Kategori + Priority */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>
                 <Tag className="w-3.5 h-3.5" />
@@ -433,7 +432,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           </div>
 
           {/* Row 5 — Status (only in edit mode) + Project + Color */}
-          <div className={`grid grid-cols-1 ${isEditMode ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-4`}>
+          <div className={`grid grid-cols-1 ${isEditMode ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
             {isEditMode && (
               <div>
                 <label className={labelClass}>
@@ -514,7 +513,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           ) : dynamicFields.length > 0 ? (
             <div className="space-y-4 pt-2 border-t border-slate-100">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Ek Bilgiler</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {dynamicFields.map((field) => (
                   <TaskDynamicFieldInput
                     key={field.id}

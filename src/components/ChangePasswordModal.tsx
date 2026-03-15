@@ -44,10 +44,10 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ onSuccess }) 
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in"
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-2 sm:p-4 animate-fade-in"
     >
       <div
-        className="rounded-2xl max-w-md w-full shadow-2xl border animate-slide-up bg-white border-slate-200"
+        className="w-full h-full md:h-auto md:w-11/12 md:max-w-md bg-white md:rounded-xl flex flex-col shadow-2xl border animate-slide-up border-slate-200 max-h-screen md:max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

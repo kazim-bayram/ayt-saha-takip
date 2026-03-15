@@ -118,7 +118,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onStatusChange, onDragStart, 
       draggable={!isNote}
       onDragStart={(e) => !isNote && onDragStart(e, task)}
       onClick={onClick}
-      className={`group relative border-l-4 ${colorToBorder(task.color)} rounded-lg p-3 cursor-pointer transition-shadow hover:shadow-md bg-white hover:bg-slate-50 shadow-sm ${
+      className={`group relative border-l-4 ${colorToBorder(task.color)} rounded-lg p-4 cursor-pointer transition-shadow hover:shadow-md bg-white hover:bg-slate-50 shadow-sm ${
         isNote ? 'opacity-90' : 'cursor-grab active:cursor-grabbing'
       } ${isNote && noteStatus === 'Olumsuz Sonuç' ? 'ring-2 ring-red-500/60' : ''}`}
     >
@@ -153,13 +153,13 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onStatusChange, onDragStart, 
       </div>
 
       {!isNote && (
-        <div ref={menuRef} className="relative mt-2">
+        <div ref={menuRef} className="relative mt-3">
           <button
             onClick={(e) => {
               e.stopPropagation();
               setMenuOpen((p) => !p);
             }}
-            className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200"
+            className="flex items-center gap-1.5 text-[11px] font-medium px-3 py-2 rounded-md transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200"
           >
             {task?.status ?? 'Bekliyor'}
             <ChevronDown className="w-3 h-3" />
@@ -244,7 +244,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
           {cards.length}
         </span>
       </div>
-      <div className="flex-1 p-3 space-y-2.5 overflow-y-auto max-h-[calc(100vh-340px)]">
+      <div className="flex-1 p-3 space-y-3 overflow-y-auto max-h-[calc(100vh-340px)]">
         {cards.length === 0 ? (
           <p className="text-xs text-center py-8 text-slate-400">{meta.emptyText}</p>
         ) : (
@@ -285,10 +285,10 @@ const AnalyticsMiniDashboard: React.FC<{ tasks: WeeklyTask[]; notes: Note[]; isD
     ? 'bg-red-50 border-red-200'
     : 'bg-white border-slate-200';
 
-  const cardBase = 'rounded-xl border p-4 transition-all';
+  const cardBase = 'rounded-xl border p-4 sm:p-5 transition-all';
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
       {/* İş Bitirme Hızı */}
       <div className={`${cardBase} ${paceBg}`}>
         <div className="flex items-center gap-2 mb-2">
@@ -355,7 +355,7 @@ const AnalyticsMiniDashboard: React.FC<{ tasks: WeeklyTask[]; notes: Note[]; isD
 
       {/* Bottleneck workers banner */}
       {analytics.bottleneckWorkers.length > 0 && (
-        <div className="col-span-full rounded-xl border p-3 flex items-center gap-3 bg-red-50 border-red-200">
+        <div className="col-span-full rounded-xl border p-4 sm:p-5 flex items-center gap-3 bg-red-50 border-red-200">
           <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
           <div>
             <p className="text-xs font-semibold text-red-700">Darboğaz Personeli</p>
@@ -552,8 +552,8 @@ const ProjectConsole: React.FC = () => {
   }, []);
 
   const VIEW_OPTIONS: { key: ViewMode; icon: React.ElementType; label: string }[] = [
-    { key: 'kanban', icon: LayoutGrid, label: 'Kanban' },
-    { key: 'monthly', icon: CalendarDays, label: 'Ay' },
+    { key: 'kanban', icon: LayoutGrid, label: 'Genel Bakış' },
+    { key: 'monthly', icon: CalendarDays, label: 'Aylık Görünüm' },
     { key: 'timeline', icon: GanttChart, label: 'Zaman Çizelgesi' },
   ];
 
@@ -566,7 +566,7 @@ const ProjectConsole: React.FC = () => {
             <div className="flex items-center gap-3">
               <Calendar className="w-5 h-5 text-brand" />
               <div>
-                <h1 className="text-lg font-bold text-slate-800">Proje Konsol</h1>
+                <h1 className="text-lg font-bold text-slate-800">Proje Takip</h1>
                 <p className="text-xs text-slate-500">
                   {tasks.length} görev · {allNotes.length} saha notu
                 </p>
@@ -660,7 +660,7 @@ const ProjectConsole: React.FC = () => {
         ) : (
           <>
             {viewMode === 'kanban' && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex flex-col md:grid md:grid-cols-3 gap-4 md:gap-6">
                 {STATUSES.map((status) => (
                   <div
                     key={status}
