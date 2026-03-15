@@ -244,22 +244,28 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
         }
       }}
     >
-      <div
-        className="w-full h-full md:h-auto md:w-11/12 md:max-w-4xl bg-white md:rounded-xl flex flex-col shadow-2xl border border-slate-200 max-h-screen md:max-h-[92vh]"
-      >
+      <div className="w-full h-full md:h-auto md:w-11/12 md:max-w-4xl bg-white md:rounded-xl flex flex-col shadow-2xl border border-slate-200 max-h-screen md:max-h-[92vh]">
         {/* Header */}
-        <div
-          className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-slate-200"
+        <div className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-slate-200">
           <div>
             <h2 className="text-lg font-bold flex items-center gap-2 text-slate-800">
-              {isEditMode ? <><Edit3 className="w-5 h-5" /> Görevi Düzenle</> : 'Yeni Görev Oluştur'}
+              {isEditMode ? (
+                <>
+                  <Edit3 className="w-5 h-5" /> Görevi Düzenle
+                </>
+              ) : (
+                'Yeni Görev Oluştur'
+              )}
             </h2>
             <p className="text-xs mt-0.5 text-slate-400">
               {isEditMode ? 'Tüm alanları güncelleyebilirsiniz' : 'İş planına yeni bir görev ekleyin'}
             </p>
           </div>
           <button
-            onClick={() => { resetForm(); onClose(); }}
+            onClick={() => {
+              resetForm();
+              onClose();
+            }}
             disabled={saving}
             className="p-2 rounded-lg transition-colors text-slate-400 hover:text-slate-600 hover:bg-slate-100"
           >
