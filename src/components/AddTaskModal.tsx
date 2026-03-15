@@ -164,14 +164,27 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     setError(null);
     setSuccessMsg(null);
     try {
+      const selectedUserObj = users.find((u) => u.uid === assignedToId);
+      const finalAssignedToId = selectedUserObj ? selectedUserObj.uid : (assignedToId || undefined);
+      const finalAssignedToName =
+        selectedUserObj
+          ? (selectedUserObj.displayName || selectedUserObj.username || '')
+          : (assignedTo.trim() || 'Atanmadı');
+
+      console.log('[DEBUG] Saving task assignment', {
+        selectedUserObj,
+        finalAssignedToId,
+        finalAssignedToName,
+      });
+
       const dynPayload = Object.keys(dynamicData).length > 0 ? { ...dynamicData } : undefined;
       if (isEditMode && onUpdate && taskToEdit) {
         await onUpdate(taskToEdit.id, {
           title: title.trim(),
           description: description.trim(),
           projectId: projectId.trim(),
-          assignedTo: assignedTo.trim(),
-          assignedToId: assignedToId || undefined,
+          assignedTo: finalAssignedToName,
+          assignedToId: finalAssignedToId,
           color,
           targetDate,
           status,
@@ -188,8 +201,8 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           title: title.trim(),
           description: description.trim(),
           projectId: projectId.trim(),
-          assignedTo: assignedTo.trim(),
-          assignedToId: assignedToId || undefined,
+          assignedTo: finalAssignedToName,
+          assignedToId: finalAssignedToId,
           color,
           targetDate,
           status: 'Bekliyor',

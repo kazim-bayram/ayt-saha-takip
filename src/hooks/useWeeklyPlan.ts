@@ -84,17 +84,28 @@ export const useWeeklyPlan = () => {
         ...(d.data() as Omit<WeeklyTask, 'id'>)
       }));
 
-      // Strict client-side RBAC filter
+      // Strict client-side RBAC filter with aggressive debug logging for workers
       let filteredTasks = allTasks;
-      if (userProfile.role === 'worker') {
-        const uid = currentUser.uid;
-        filteredTasks = allTasks.filter(
-          (task) => task.assignedToId === uid || task.authorId === uid
-        );
-      }
+      if (userProfile?.role === 'worker') {
+        const myUid = currentUser.uid;
+        const myName = currentUser.displayName || '';
 
-      // Temporary debug log for RBAC verification
-      console.log('Worker UID:', currentUser.uid, 'Filtered Tasks:', filteredTasks, 'Raw Tasks:', allTasks);
+        const filtered = allTasks.filter((task) => {
+          const matchesId = (task as any).assignedToId === myUid;
+          const matchesName = (task as any).assignedTo === myName;
+          const isAuthor = (task as any).authorId === myUid;
+
+          const isMine = matchesId || matchesName || isAuthor;
+
+          console.log(
+            `[DEBUG] Task: "${(task as any).title}" | assignedToId: ${(task as any).assignedToId} | myUid: ${myUid} | assignedTo(Name): ${(task as any).assignedTo} | myName: ${myName} | PASSED: ${isMine}`
+          );
+
+          return isMine;
+        });
+
+        filteredTasks = filtered;
+      }
 
       setLoading(false);
       return filteredTasks;
